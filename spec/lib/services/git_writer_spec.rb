@@ -62,6 +62,39 @@ RSpec.describe Commiti::GitWriter do
     end
   end
 
+  describe '.unstage_all' do
+    it 'returns true when git reset succeeds' do
+      allow(Open3).to receive(:capture3).with('git', 'reset').and_return(['', '', status(true)])
+
+      expect(described_class.unstage_all).to be(true)
+    end
+
+    it 'raises on reset failure' do
+      allow(Open3).to receive(:capture3).with('git', 'reset').and_return(['', 'fatal: reset failed', status(false)])
+
+      expect { described_class.unstage_all }.to raise_error('git reset failed: fatal: reset failed')
+    end
+  end
+
+  describe '.stage_files' do
+    it 'stages only the provided files' do
+      allow(Open3).to receive(:capture3).with('git', 'add', '--', 'lib/a.rb', 'spec/a_spec.rb').and_return(['', '', status(true)])
+
+      expect(described_class.stage_files(['lib/a.rb', 'spec/a_spec.rb'])).to be(true)
+    end
+
+    it 'returns true without invoking git when file list is empty' do
+      expect(Open3).not_to receive(:capture3)
+      expect(described_class.stage_files([])).to be(true)
+    end
+
+    it 'raises on git add failure' do
+      allow(Open3).to receive(:capture3).with('git', 'add', '--', 'lib/a.rb').and_return(['', 'fatal: bad path', status(false)])
+
+      expect { described_class.stage_files(['lib/a.rb']) }.to raise_error('git add failed: fatal: bad path')
+    end
+  end
+
   describe '.commit_with_message_file' do
     it 'writes message to tempfile and commits with --file' do
       allow(Open3).to receive(:capture3) do |*args|

@@ -19,7 +19,7 @@ module Commiti
               edited = edit_message_until_valid(working_message)
               if edited.nil?
                 puts "\nEditor did not exit successfully. Commit skipped.\n\n"
-                return
+                return :skipped
               end
 
               working_message = edited
@@ -28,13 +28,13 @@ module Commiti
             end
 
             puts "\nCommit skipped.\n\n"
-            return
+            return :skipped
           end
 
           output = run_stage.call('Writing commit') { Commiti::GitWriter.commit_with_message_file(working_message) }
           puts output unless output.to_s.strip.empty?
           puts "\nCommit created.\n\n"
-          return
+          return :committed
         when :edit
           edited = edit_message_until_valid(working_message)
           if edited.nil?
@@ -46,7 +46,7 @@ module Commiti
           print_message.call(working_message)
         else
           puts "\nCommit skipped.\n\n"
-          return
+          return :skipped
         end
       end
     end
