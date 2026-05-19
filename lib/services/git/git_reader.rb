@@ -124,34 +124,44 @@ module Commiti
       output = +''
       return output if max_bytes <= 0
 
+      header_lines, hunks = partition_chunk_lines(lines)
+      append_lines_with_limit(output, header_lines, max_bytes: max_bytes)
+      return output if hunks.empty?
+
+      append_hunks_with_limit(output, hunks, max_bytes: max_bytes)
+      output
+    end
+
+    def self.partition_chunk_lines(lines)
       header_lines = []
       hunks = []
       current_hunk = nil
-      in_hunks = false
 
       lines.each do |line|
         if line.start_with?('@@')
-          in_hunks = true
           current_hunk = [line]
           hunks << current_hunk
-          next
-        end
-
-        if in_hunks
+        elsif current_hunk
           current_hunk << line
         else
           header_lines << line
         end
       end
 
-      header_lines.each do |line|
+      [header_lines, hunks]
+    end
+    private_class_method :partition_chunk_lines
+
+    def self.append_lines_with_limit(output, lines, max_bytes:)
+      lines.each do |line|
         break if output.bytesize + line.bytesize > max_bytes
 
         output << line
       end
+    end
+    private_class_method :append_lines_with_limit
 
-      return output if hunks.empty?
-
+    def self.append_hunks_with_limit(output, hunks, max_bytes:)
       hunks.each do |hunk|
         hunk_text = hunk.join
         if output.bytesize + hunk_text.bytesize <= max_bytes
@@ -159,20 +169,20 @@ module Commiti
           next
         end
 
-        hunk_header = hunk.first
-        break if output.bytesize + hunk_header.bytesize > max_bytes
-
-        output << hunk_header
-        hunk[1..].to_a.each do |line|
-          break if output.bytesize + line.bytesize > max_bytes
-
-          output << line
-        end
+        append_partial_hunk(output, hunk, max_bytes: max_bytes)
         break
       end
-
-      output
     end
+    private_class_method :append_hunks_with_limit
+
+    def self.append_partial_hunk(output, hunk, max_bytes:)
+      hunk_header = hunk.first
+      return if output.bytesize + hunk_header.bytesize > max_bytes
+
+      output << hunk_header
+      append_lines_with_limit(output, hunk[1..].to_a, max_bytes: max_bytes)
+    end
+    private_class_method :append_partial_hunk
 
     def self.append_notice(clipped_diff, max_bytes:)
       safe_clipped = clipped_diff.to_s
