@@ -51,7 +51,8 @@ module Commiti
       end
 
       def run_single_group_context(context:, client:, model:)
-        puts "\nAuto-split found a single connected change group. Falling back to single commit flow."
+        message = 'Auto-split found a single connected change group. Falling back to single commit flow.'
+        puts "\n#{Commiti::TerminalUI.status(:info, message)}"
         Commiti::MessagePresenter.print_summarization_notice(context[:summarized_result])
 
         message = generate_message_for_context(context:, client:, model:)
@@ -63,7 +64,7 @@ module Commiti
         groups = context[:change_groups]
         run_stage('Unstaging current index for grouped commit execution') { Commiti::GitWriter.unstage_all! }
 
-        puts "\nAuto-split detected #{groups.length} connected change groups."
+        puts "\n#{Commiti::TerminalUI.status(:info, "Auto-split detected #{groups.length} connected change groups.")}"
 
         groups.each_with_index do |group, index|
           break if process_group(group:, index:, total: groups.length, client:, model:) == :stop
@@ -74,7 +75,7 @@ module Commiti
         run_stage("Staging files for group #{index + 1}/#{total}") { Commiti::GitWriter.stage_files!(group[:files]) }
         return :continue unless run_stage('Checking staged changes') { Commiti::GitWriter.staged_changes? }
 
-        puts "\nGroup #{index + 1}/#{total} files:"
+        puts "\n#{Commiti::TerminalUI.header("Group #{index + 1}/#{total} files")}:"
         group[:files].each { |path| puts "- #{path}" }
 
         group_context = build_context(diff: group_diff(group), client:, model:)
@@ -84,7 +85,8 @@ module Commiti
         maybe_copy_to_clipboard(message)
         return :continue if finalize(message) == :committed
 
-        puts "Stopping auto-split flow at group #{index + 1} because commit was skipped."
+        stop_message = "Stopping auto-split flow at group #{index + 1} because commit was skipped."
+        puts Commiti::TerminalUI.status(:warn, stop_message)
         run_stage('Restaging remaining uncommitted changes') { Commiti::GitWriter.stage_all! }
         :stop
       end

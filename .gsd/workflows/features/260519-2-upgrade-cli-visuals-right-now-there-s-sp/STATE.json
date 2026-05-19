@@ -1,8 +1,8 @@
 {
   "template": "small-feature",
   "templateName": "Small Feature",
-  "description": "",
-  "branch": "gsd/small-feature/small-feature",
+  "description": "upgrade cli visuals, right now there's spinner but it's still hard to read the output",
+  "branch": "gsd/small-feature/upgrade-cli-visuals-right-now-there-s-sp",
   "phases": [
     {
       "name": "scope",
@@ -26,7 +26,7 @@
     }
   ],
   "currentPhase": 3,
-  "startedAt": "2026-05-19T08:36:15.522Z",
+  "startedAt": "2026-05-19T14:03:35.512Z",
   "updatedAt": "2026-05-19T14:26:07Z",
-  "artifactDir": "/Users/hlushchenkoyevhenii/Projects/RoR/commiti/.gsd/workflows/features/260519-1-small-feature"
+  "artifactDir": "/Users/hlushchenkoyevhenii/Projects/RoR/commiti/.gsd/workflows/features/260519-2-upgrade-cli-visuals-right-now-there-s-sp"
 }

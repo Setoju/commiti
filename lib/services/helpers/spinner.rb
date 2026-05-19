@@ -5,13 +5,8 @@ module Commiti
     FRAMES = ['|', '/', '-', '\\'].freeze
     INTERVAL_SECONDS = 0.1
 
-    def self.run(message)
-      unless $stdout.tty?
-        puts "#{message}..."
-        result = yield
-        puts "[done] #{message}"
-        return result
-      end
+    def self.run(message, &block)
+      return run_without_spinner(message, &block) unless $stdout.tty?
 
       done = false
       error = nil
@@ -20,7 +15,7 @@ module Commiti
       spinner_thread = Thread.new do
         index = 0
         until done
-          frame = FRAMES[index % FRAMES.length]
+          frame = Commiti::TerminalUI.color(FRAMES[index % FRAMES.length], :cyan)
           print "\r#{frame} #{message}"
           $stdout.flush
           index += 1
@@ -29,15 +24,14 @@ module Commiti
       end
 
       begin
-        result = yield
+        result = block.call
       rescue StandardError => e
         error = e
       ensure
         done = true
         spinner_thread.join
 
-        status = error.nil? ? '[done]' : '[fail]'
-        print "\r#{status} #{message}\n"
+        print "\r#{final_status_line(error, message)}\n"
         $stdout.flush
       end
 
@@ -45,5 +39,19 @@ module Commiti
 
       result
     end
+
+    def self.run_without_spinner(message, &block)
+      puts Commiti::TerminalUI.status(:info, "#{message}...")
+      result = block.call
+      puts Commiti::TerminalUI.status(:success, message)
+      result
+    end
+    private_class_method :run_without_spinner
+
+    def self.final_status_line(error, message)
+      kind = error.nil? ? :success : :fail
+      Commiti::TerminalUI.status(kind, message)
+    end
+    private_class_method :final_status_line
   end
 end

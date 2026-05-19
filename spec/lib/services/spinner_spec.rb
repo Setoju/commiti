@@ -10,7 +10,7 @@ RSpec.describe Commiti::Spinner do
       result = nil
       expect do
         result = described_class.run('Working') { 42 }
-      end.to output(/Working\.\.\..*\[done\] Working/m).to_stdout
+      end.to output(/Working\.\.\..*✅ Working/m).to_stdout
 
       expect(result).to eq(42)
     end
@@ -22,7 +22,7 @@ RSpec.describe Commiti::Spinner do
         expect do
           described_class.run('Boom') { raise 'failure' }
         end.to raise_error('failure')
-      end.to output(/\[fail\] Boom/).to_stdout
+      end.to output(/❌.*Boom/m).to_stdout
     end
   end
 end

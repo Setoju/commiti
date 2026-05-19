@@ -12,13 +12,13 @@ module Commiti
         when :yes
           errors = Commiti::InteractivePrompt.commit_message_errors(working_message)
           unless errors.empty?
-            puts "\nCurrent message needs fixes before commit:"
+            puts "\n#{Commiti::TerminalUI.status(:warn, 'Current message needs fixes before commit:')}"
             errors.each { |error| puts "- #{error}" }
 
             if Commiti::InteractivePrompt.ask_yes_no('Open editor to fix now?', default: :yes)
               edited = edit_message_until_valid(working_message)
               if edited.nil?
-                puts "\nEditor did not exit successfully. Commit skipped.\n\n"
+                puts "\n#{Commiti::TerminalUI.status(:fail, 'Editor did not exit successfully. Commit skipped.')}\n\n"
                 return :skipped
               end
 
@@ -27,25 +27,25 @@ module Commiti
               next
             end
 
-            puts "\nCommit skipped.\n\n"
+            puts "\n#{Commiti::TerminalUI.status(:warn, 'Commit skipped.')}\n\n"
             return :skipped
           end
 
           output = run_stage.call('Writing commit') { Commiti::GitWriter.commit_with_message_file(working_message) }
           puts output unless output.to_s.strip.empty?
-          puts "\nCommit created.\n\n"
+          puts "\n#{Commiti::TerminalUI.status(:success, 'Commit created.')}\n\n"
           return :committed
         when :edit
           edited = edit_message_until_valid(working_message)
           if edited.nil?
-            puts "\nEditor did not exit successfully.\n\n"
+            puts "\n#{Commiti::TerminalUI.status(:fail, 'Editor did not exit successfully.')}\n\n"
             next
           end
 
           working_message = edited
           print_message.call(working_message)
         else
-          puts "\nCommit skipped.\n\n"
+          puts "\n#{Commiti::TerminalUI.status(:warn, 'Commit skipped.')}\n\n"
           return :skipped
         end
       end
@@ -59,7 +59,7 @@ module Commiti
         return nil if edited.nil?
 
         if edited == working.to_s.strip
-          puts "\nNo changes detected in editor."
+          puts "\n#{Commiti::TerminalUI.status(:info, 'No changes detected in editor.')}"
           return edited unless Commiti::InteractivePrompt.ask_yes_no('Re-open editor now?', default: :yes)
 
           next
@@ -68,7 +68,7 @@ module Commiti
         errors = Commiti::InteractivePrompt.commit_message_errors(edited)
         return edited if errors.empty?
 
-        puts "\nEdited message needs fixes:"
+        puts "\n#{Commiti::TerminalUI.status(:warn, 'Edited message needs fixes:')}"
         errors.each { |error| puts "- #{error}" }
         return edited unless Commiti::InteractivePrompt.ask_yes_no('Re-open editor now?', default: :yes)
 

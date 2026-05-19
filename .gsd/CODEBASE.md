@@ -1,7 +1,7 @@
 # Codebase Map
 
-Generated: 2026-05-19T10:59:18Z | Files: 57 | Described: 0/57
-<!-- gsd:codebase-meta {"generatedAt":"2026-05-19T10:59:18Z","fingerprint":"06b36e6a464cf9fc5de1ccffde44adafe752f299","fileCount":57,"truncated":false} -->
+Generated: 2026-05-19T14:25:08Z | Files: 59 | Described: 0/59
+<!-- gsd:codebase-meta {"generatedAt":"2026-05-19T14:25:08Z","fingerprint":"22ee631b0861e4b00d0a0c36253966592c034172","fileCount":59,"truncated":false} -->
 
 ### (root)/
 - `.commiti.rb`
@@ -61,6 +61,7 @@ Generated: 2026-05-19T10:59:18Z | Files: 57 | Described: 0/57
 - `lib/services/helpers/interactive_prompt.rb`
 - `lib/services/helpers/prompt_builder.rb`
 - `lib/services/helpers/spinner.rb`
+- `lib/services/helpers/terminal_ui.rb`
 
 ### spec/
 - `spec/spec_helper.rb`
@@ -89,3 +90,4 @@ Generated: 2026-05-19T10:59:18Z | Files: 57 | Described: 0/57
 - `spec/lib/services/pr_opener_spec.rb`
 - `spec/lib/services/prompt_builder_spec.rb`
 - `spec/lib/services/spinner_spec.rb`
+- `spec/lib/services/terminal_ui_spec.rb`
