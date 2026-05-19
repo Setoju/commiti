@@ -8,6 +8,7 @@ Gem::Specification.new do |spec|
   spec.summary = 'AI-powered commit and PR description generator using Google AI models'
   spec.description = 'Generates git commit messages and PR descriptions using Google AI text generation models. Supports GitHub, GitLab, and GitBucket with prefilled PR/MR forms.'
   spec.homepage = 'https://github.com/setoju/commiti'
+  spec.change_log = 'https://github.com/setoju/commiti/CHANGELOG.md'
   spec.license = 'MIT'
 
   spec.files = Dir['lib/**/*', 'bin/*'] + ['LICENSE', 'README.md']

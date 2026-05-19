@@ -1,7 +1,7 @@
 # Codebase Map
 
-Generated: 2026-05-19T10:08:12Z | Files: 56 | Described: 0/56
-<!-- gsd:codebase-meta {"generatedAt":"2026-05-19T10:08:12Z","fingerprint":"1763402fbcb6fcae25562b19166812bd7b727953","fileCount":56,"truncated":false} -->
+Generated: 2026-05-19T10:49:43Z | Files: 56 | Described: 0/56
+<!-- gsd:codebase-meta {"generatedAt":"2026-05-19T10:49:43Z","fingerprint":"1763402fbcb6fcae25562b19166812bd7b727953","fileCount":56,"truncated":false} -->
 
 ### (root)/
 - `.commiti.rb`
