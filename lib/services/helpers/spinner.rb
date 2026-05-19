@@ -7,9 +7,9 @@ module Commiti
 
     def self.run(message)
       unless $stdout.tty?
-        puts "#{message}..."
+        puts Commiti::TerminalUI.status(:info, "#{message}...")
         result = yield
-        puts "[done] #{message}"
+        puts Commiti::TerminalUI.status(:success, message)
         return result
       end
 
@@ -20,7 +20,7 @@ module Commiti
       spinner_thread = Thread.new do
         index = 0
         until done
-          frame = FRAMES[index % FRAMES.length]
+          frame = Commiti::TerminalUI.color(FRAMES[index % FRAMES.length], :cyan)
           print "\r#{frame} #{message}"
           $stdout.flush
           index += 1
@@ -36,8 +36,8 @@ module Commiti
         done = true
         spinner_thread.join
 
-        status = error.nil? ? '[done]' : '[fail]'
-        print "\r#{status} #{message}\n"
+        kind = error.nil? ? :success : :fail
+        print "\r#{Commiti::TerminalUI.status(kind, message)}\n"
         $stdout.flush
       end
 
