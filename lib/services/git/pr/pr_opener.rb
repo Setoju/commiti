@@ -71,7 +71,9 @@ module Commiti
     private_class_method :prefilled_url
 
     def self.github_like_compare_url(remote:, base_branch:, head_branch:, title:, body:, include_title: true, include_body: true)
-      query_params = { 'expand' => '1' }
+      query_params = {
+        github_compare_prefill_param(remote[:provider]) => '1'
+      }
       normalized_title = normalize_title(title)
       query_params['title'] = normalized_title if include_title && !normalized_title.empty?
       query_params['body'] = body.to_s if include_body && !body.to_s.empty?
@@ -82,6 +84,11 @@ module Commiti
 
       "#{base}/#{path}/compare/#{encode_branch_for_path(base_branch)}...#{encode_branch_for_path(head_branch)}?#{query}"
     end
+
+    def self.github_compare_prefill_param(provider)
+      provider == :github ? 'quick_pull' : 'expand'
+    end
+    private_class_method :github_compare_prefill_param
 
     def self.gitlab_mr_url(remote:, base_branch:, head_branch:, title:, body:, include_title: true, include_description: true)
       query_params = {

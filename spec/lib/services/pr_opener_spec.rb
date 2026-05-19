@@ -18,6 +18,7 @@ RSpec.describe Commiti::PrOpener do
       expect(url).to start_with('https://github.com/acme/commiti/compare/main...feat-x?')
 
       query = CGI.parse(URI.parse(url).query)
+      expect(query['quick_pull']).to eq(['1'])
       expect(query['title']).to eq(['My PR'])
       expect(query['body']).to eq(['Body text'])
     end
@@ -82,6 +83,7 @@ RSpec.describe Commiti::PrOpener do
       expect(url).to start_with('https://gitbucket.example.com/acme/commiti/compare/main...feat%2Fwith-slash?')
 
       query = CGI.parse(URI.parse(url).query)
+      expect(query['expand']).to eq(['1'])
       expect(query['title']).to eq(['My PR'])
       expect(query['body']).to eq(['Body text'])
     end

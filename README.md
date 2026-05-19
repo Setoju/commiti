@@ -114,7 +114,8 @@ Commit edit mode uses:
    - `## Changes Made`
    - `## Testing Notes`
 3. Builds provider compare/MR URL with prefilled title/body using query params.
-  - GitHub/GitBucket: compare URL
+  - GitHub: compare URL with `quick_pull=1` (opens the PR form directly)
+  - GitBucket: compare URL with `expand=1`
   - GitLab: new merge request URL
    - If the URL would exceed safe browser/provider limits, Commiti drops description prefill automatically and keeps the shortest usable URL.
 4. Asks before opening browser.
