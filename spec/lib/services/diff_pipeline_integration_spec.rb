@@ -32,4 +32,36 @@ RSpec.describe 'Diff pipeline', :integration do
     expect(result[:summarized]).to be(true)
     expect(result[:content]).to include('### app/models/user.rb')
   end
+
+  it 'derives connected change groups from the diff context' do
+    diff = <<~DIFF
+      diff --git a/lib/services/message_generator.rb b/lib/services/message_generator.rb
+      @@ -1 +1 @@
+      -old
+      +new
+      diff --git a/spec/lib/services/message_generator_spec.rb b/spec/lib/services/message_generator_spec.rb
+      @@ -1 +1 @@
+      -old
+      +new
+      diff --git a/README.md b/README.md
+      @@ -1 +1 @@
+      -before
+      +after
+    DIFF
+
+    context = Commiti::FlowContextBuilder.build(
+      flow_type: :commit,
+      diff: diff,
+      client: fake_summary_client_class.new,
+      run_stage: ->(_message, &block) { block.call },
+      model: Commiti::GoogleClient::DEFAULT_MODEL
+    )
+
+    expect(context[:change_groups].length).to eq(2)
+    expect(context[:change_groups][0][:files]).to eq([
+                                                       'lib/services/message_generator.rb',
+                                                       'spec/lib/services/message_generator_spec.rb'
+                                                     ])
+    expect(context[:change_groups][1][:files]).to eq(['README.md'])
+  end
 end
