@@ -1,7 +1,7 @@
 # Codebase Map
 
-Generated: 2026-05-19T10:49:43Z | Files: 56 | Described: 0/56
-<!-- gsd:codebase-meta {"generatedAt":"2026-05-19T10:49:43Z","fingerprint":"1763402fbcb6fcae25562b19166812bd7b727953","fileCount":56,"truncated":false} -->
+Generated: 2026-05-19T10:59:18Z | Files: 57 | Described: 0/57
+<!-- gsd:codebase-meta {"generatedAt":"2026-05-19T10:59:18Z","fingerprint":"06b36e6a464cf9fc5de1ccffde44adafe752f299","fileCount":57,"truncated":false} -->
 
 ### (root)/
 - `.commiti.rb`
@@ -9,6 +9,7 @@ Generated: 2026-05-19T10:49:43Z | Files: 56 | Described: 0/56
 - `.gitignore`
 - `.rspec`
 - `.rubocop.yml`
+- `CHANGELOG.md`
 - `commiti.gemspec`
 - `GEM_VERSION_AND_INSTALL.md`
 - `Gemfile`
