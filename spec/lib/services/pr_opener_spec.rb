@@ -41,7 +41,7 @@ RSpec.describe Commiti::PrOpener do
       expect(query['merge_request[description]']).to eq(['MR body'])
     end
 
-    it 'omits GitHub body prefill when URL would be too long' do
+    it 'truncates GitHub body prefill when URL would be too long' do
       url = described_class.compare_url(
         origin_url: 'git@github.com:acme/commiti.git',
         base_branch: 'main',
@@ -52,11 +52,12 @@ RSpec.describe Commiti::PrOpener do
 
       query = CGI.parse(URI.parse(url).query)
       expect(query['title']).to eq(['My PR'])
-      expect(query).not_to have_key('body')
+      expect(query['body'].first).not_to be_empty
+      expect(query['body'].first.length).to be < 6_000
       expect(url.length).to be <= described_class::MAX_PREFILLED_URL_LENGTH
     end
 
-    it 'omits GitLab description prefill when URL would be too long' do
+    it 'truncates GitLab description prefill when URL would be too long' do
       url = described_class.compare_url(
         origin_url: 'git@gitlab.com:acme/subgroup/commiti.git',
         base_branch: 'main',
@@ -67,7 +68,25 @@ RSpec.describe Commiti::PrOpener do
 
       query = CGI.parse(URI.parse(url).query)
       expect(query['merge_request[title]']).to eq(['My MR'])
-      expect(query).not_to have_key('merge_request[description]')
+      description = query['merge_request[description]'].first
+      expect(description).not_to be_empty
+      expect(description.length).to be < 6_000
+      expect(url.length).to be <= described_class::MAX_PREFILLED_URL_LENGTH
+    end
+
+    it 'truncates GitBucket body prefill when URL would be too long' do
+      url = described_class.compare_url(
+        origin_url: 'https://gitbucket.example.com/acme/commiti.git',
+        base_branch: 'main',
+        head_branch: 'feat-x',
+        title: 'My PR',
+        body: 'x' * 6_000
+      )
+
+      query = CGI.parse(URI.parse(url).query)
+      expect(query['title']).to eq(['My PR'])
+      expect(query['body'].first).not_to be_empty
+      expect(query['body'].first.length).to be < 6_000
       expect(url.length).to be <= described_class::MAX_PREFILLED_URL_LENGTH
     end
 

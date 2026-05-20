@@ -32,6 +32,14 @@ module Commiti
     end
 
     def self.compare_url_candidates(remote:, base_branch:, head_branch:, title:, body:)
+      truncated_body = truncate_body_to_fit(
+        remote: remote,
+        base_branch: base_branch,
+        head_branch: head_branch,
+        title: title,
+        body: body
+      )
+
       [
         prefilled_url(
           remote: remote,
@@ -41,6 +49,15 @@ module Commiti
           body: body,
           include_title: true,
           include_body: true
+        ),
+        prefilled_url(
+          remote: remote,
+          base_branch: base_branch,
+          head_branch: head_branch,
+          title: title,
+          body: truncated_body,
+          include_title: true,
+          include_body: !truncated_body.to_s.empty?
         ),
         prefilled_url(
           remote: remote,
@@ -63,6 +80,50 @@ module Commiti
       ]
     end
     private_class_method :compare_url_candidates
+
+    def self.truncate_body_to_fit(remote:, base_branch:, head_branch:, title:, body:)
+      text = body.to_s
+      return '' if text.empty?
+
+      full_url = prefilled_url(
+        remote: remote,
+        base_branch: base_branch,
+        head_branch: head_branch,
+        title: title,
+        body: text,
+        include_title: true,
+        include_body: true
+      )
+      return text if full_url.length <= MAX_PREFILLED_URL_LENGTH
+
+      low = 0
+      high = text.length
+      best = ''
+
+      while low <= high
+        mid = (low + high) / 2
+        candidate_body = text[0, mid]
+        candidate_url = prefilled_url(
+          remote: remote,
+          base_branch: base_branch,
+          head_branch: head_branch,
+          title: title,
+          body: candidate_body,
+          include_title: true,
+          include_body: !candidate_body.empty?
+        )
+
+        if candidate_url.length <= MAX_PREFILLED_URL_LENGTH
+          best = candidate_body
+          low = mid + 1
+        else
+          high = mid - 1
+        end
+      end
+
+      best
+    end
+    private_class_method :truncate_body_to_fit
 
     def self.prefilled_url(remote:, base_branch:, head_branch:, title:, body:, include_title:, include_body:)
       if remote[:provider] == :gitlab

@@ -117,7 +117,7 @@ Commit edit mode uses:
   - GitHub: compare URL with `quick_pull=1` (opens the PR form directly)
   - GitBucket: compare URL with `expand=1`
   - GitLab: new merge request URL
-   - If the URL would exceed safe browser/provider limits, Commiti drops description prefill automatically and keeps the shortest usable URL.
+  - If the URL would exceed safe browser/provider limits, Commiti keeps title prefill and truncates description prefill to the longest text that still fits.
 4. Asks before opening browser.
 
 The tool opens a browser URL only. It does not call provider APIs.
