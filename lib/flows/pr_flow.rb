@@ -20,20 +20,48 @@ module Commiti
       end
 
       def maybe_open_pr_page(description, base_branch)
-        pr_url = run_stage('Preparing prefilled PR URL') do
-          head_branch = Commiti::GitWriter.current_branch
-          origin_url = Commiti::GitWriter.origin_url
-          title = Commiti::PrOpener.suggest_title(description, head_branch: head_branch)
-          Commiti::PrOpener.compare_url(
+        head_branch = Commiti::GitWriter.current_branch
+        origin_url = Commiti::GitWriter.origin_url
+        title = Commiti::PrOpener.suggest_title(description, head_branch: head_branch)
+
+        api_result = run_stage('Creating PR/MR via provider API (if token configured)') do
+          Commiti::PrCreator.create(
             origin_url: origin_url,
             base_branch: base_branch,
             head_branch: head_branch,
             title: title,
-            body: description
+            body: description,
+            config: options
           )
         end
 
-        if Commiti::InteractivePrompt.ask_yes_no('Open prefilled PR page in browser now?', default: :no)
+        pr_url = api_result[:url]
+        using_api = !pr_url.nil?
+
+        if pr_url.nil?
+          case api_result[:reason]
+          when :missing_token
+            puts "\n#{Commiti::TerminalUI.status(:info, "No #{api_result[:provider]} token configured; using browser prefill fallback.")}"
+          when :unsupported_provider
+            puts "\n#{Commiti::TerminalUI.status(:warn, 'Provider API is unsupported; using browser prefill fallback.')}"
+          when :api_error
+            puts "\n#{Commiti::TerminalUI.status(:warn, "PR API create failed: #{api_result[:error]}. Using browser prefill fallback.")}"
+          end
+
+          pr_url = run_stage('Preparing prefilled PR URL') do
+            Commiti::PrOpener.compare_url(
+              origin_url: origin_url,
+              base_branch: base_branch,
+              head_branch: head_branch,
+              title: title,
+              body: description
+            )
+          end
+        end
+
+        prompt_text = using_api ? 'Open created PR page in browser now?' : 'Open prefilled PR page in browser now?'
+
+        if Commiti::InteractivePrompt.ask_yes_no(prompt_text, default: :no)
           run_stage('Opening browser') { Commiti::PrOpener.open_in_browser(pr_url) }
           puts "\nOpened PR page:\n#{pr_url}\n\n"
         else
