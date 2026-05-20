@@ -12,7 +12,7 @@ module Commiti
 
       def fallback_summary(diff, chunks: nil)
         parsed_chunks = chunks || Commiti::DiffParser.split_by_file(diff)
-        files = build_file_stats(parsed_chunks)
+        files = file_stats_for(parsed_chunks)
         return diff.to_s[0, FALLBACK_BYTES] if files.empty?
 
         render_fallback_summary(files)
@@ -20,12 +20,12 @@ module Commiti
 
       private
 
-      def build_file_stats(chunks)
-        chunks.map { |chunk| summarize_chunk(chunk) }
+      def file_stats_for(chunks)
+        chunks.map { |chunk| file_stats_for_chunk(chunk) }
       end
 
-      def summarize_chunk(chunk)
-        status, additions, deletions = status_and_counts(chunk[:diff])
+      def file_stats_for_chunk(chunk)
+        status, additions, deletions = file_status_and_counts(chunk[:diff])
         {
           path: chunk[:path].to_s,
           additions: additions,
@@ -34,7 +34,7 @@ module Commiti
         }
       end
 
-      def status_and_counts(diff_text)
+      def file_status_and_counts(diff_text)
         status = 'modified'
         additions = 0
         deletions = 0
@@ -64,21 +64,26 @@ module Commiti
       end
 
       def render_fallback_summary(files)
-        lines = [
+        summary_lines = [
           '### Diff Overview',
           "- Total files changed: #{files.length}",
           ''
         ]
 
+        append_file_sections(summary_lines, files)
+        append_truncation_notice(summary_lines, files)
+
+        summary_lines.join("\n").strip
+      end
+
+      def append_file_sections(summary_lines, files)
         files.first(MAX_FILES_IN_SUMMARY).each do |file|
-          lines.concat(render_file_section(file))
+          summary_lines.concat(render_file_section(file))
         end
+      end
 
-        if files.length > MAX_FILES_IN_SUMMARY
-          lines << "...and #{files.length - MAX_FILES_IN_SUMMARY} more files"
-        end
-
-        lines.join("\n").strip
+      def append_truncation_notice(summary_lines, files)
+        summary_lines << "...and #{files.length - MAX_FILES_IN_SUMMARY} more files" if files.length > MAX_FILES_IN_SUMMARY
       end
 
       def render_file_section(file)
