@@ -4,6 +4,9 @@ module Commiti
   class ConfigLoader
     DEFAULT_CONFIG = {
       google_api_key: nil,
+      github_token: nil,
+      gitlab_token: nil,
+      gitbucket_token: nil,
       model: Commiti::GoogleClient::DEFAULT_MODEL,
       candidates: 1,
       base_branch: 'main',
@@ -19,6 +22,9 @@ module Commiti
     def self.load(env: ENV)
       {
         google_api_key: google_api_key_from_env(env),
+        github_token: present_or_nil(env.fetch('COMMITI_GITHUB_TOKEN', nil)),
+        gitlab_token: present_or_nil(env.fetch('COMMITI_GITLAB_TOKEN', nil)),
+        gitbucket_token: present_or_nil(env.fetch('COMMITI_GITBUCKET_TOKEN', nil)),
         model: present_or_default(env.fetch('COMMITI_MODEL', nil), DEFAULT_CONFIG[:model]),
         candidates: integer_or_default(env.fetch('COMMITI_CANDIDATES', nil), DEFAULT_CONFIG[:candidates]),
         base_branch: present_or_default(env.fetch('COMMITI_BASE_BRANCH', nil), DEFAULT_CONFIG[:base_branch]),
