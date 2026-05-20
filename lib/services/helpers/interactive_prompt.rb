@@ -13,14 +13,14 @@ module Commiti
     def self.ask_yes_no(question, default: :no)
       suffix = default == :yes ? '[Y/n]' : '[y/N]'
       input = read_input("#{question} #{suffix} ")
-      return default == :yes if input.nil?
+      return default == :yes ? :yes : nil if input.nil?
 
       value = input.strip.downcase
-      return true if %w[y yes].include?(value)
-      return false if %w[n no].include?(value)
-      return default == :yes if value.empty?
+      return :yes if %w[y yes].include?(value)
+      return nil if %w[n no].include?(value)
+      return default == :yes ? :yes : nil if value.empty?
 
-      false
+      nil
     end
 
     def self.ask_commit_action

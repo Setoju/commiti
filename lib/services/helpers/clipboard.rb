@@ -6,22 +6,18 @@ module Commiti
       case platform
       when :mac
         IO.popen('pbcopy', 'w') { |io| io.write(text) }
-        true
+        :copied
       when :linux
         if command_exists?('xclip')
           IO.popen('xclip -selection clipboard', 'w') { |io| io.write(text) }
-          true
+          :copied
         elsif command_exists?('xsel')
           IO.popen('xsel --clipboard --input', 'w') { |io| io.write(text) }
-          true
-        else
-          false # no clipboard tool found
+          :copied
         end
       when :windows
         IO.popen('clip', 'w') { |io| io.write(text) }
-        true
-      else
-        false
+        :copied
       end
     end
 
