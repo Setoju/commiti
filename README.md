@@ -46,6 +46,11 @@ Set variables in your shell, CI secret manager, or local `.env` file (in your pr
 ```dotenv
 GOOGLE_API_KEY=your_google_ai_key
 
+# Optional: provider API tokens for API-first PR/MR creation
+# COMMITI_GITHUB_TOKEN=your_github_token
+# COMMITI_GITLAB_TOKEN=your_gitlab_token
+# COMMITI_GITBUCKET_TOKEN=your_gitbucket_token
+
 # Optional overrides:
 # COMMITI_MODEL=gemma-4-31b-it
 # COMMITI_CANDIDATES=1
@@ -114,13 +119,17 @@ Commit edit mode uses:
    - `## Changes Made`
    - `## Testing Notes`
 3. Builds provider compare/MR URL with prefilled title/body using query params.
-  - GitHub: compare URL with `quick_pull=1` (opens the PR form directly)
-  - GitBucket: compare URL with `expand=1`
-  - GitLab: new merge request URL
-  - If the URL would exceed safe browser/provider limits, Commiti keeps title prefill and truncates description prefill to the longest text that still fits.
+  - API-first path (when token is configured):
+    - GitHub/GitBucket: creates PR via provider API and opens created PR URL.
+    - GitLab: creates MR via provider API and opens created MR URL.
+  - Fallback path (when no token is configured, provider unsupported, or API call fails):
+    - GitHub: compare URL with `quick_pull=1` (opens the PR form directly)
+    - GitBucket: compare URL with `expand=1`
+    - GitLab: new merge request URL
+    - If the URL would exceed safe browser/provider limits, Commiti keeps title prefill and truncates description prefill to the longest text that still fits.
 4. Asks before opening browser.
 
-The tool opens a browser URL only. It does not call provider APIs.
+Commiti can create PRs/MRs via provider APIs when tokens are configured, and always opens the resulting page in your browser.
 
 ### Diff Context Protocol
 
