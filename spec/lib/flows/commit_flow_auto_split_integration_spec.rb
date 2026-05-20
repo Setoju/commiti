@@ -5,18 +5,18 @@ require 'tmpdir'
 require 'open3'
 require 'fileutils'
 
-RSpec.describe 'CommitFlow auto-split', :integration do
-  class FakeGoogleClient
-    def initialize
-      @counter = 0
-    end
-
-    def generate(**_kwargs)
-      @counter += 1
-      "feat: grouped commit #{@counter}"
-    end
+class FakeGoogleClient
+  def initialize
+    @counter = 0
   end
 
+  def generate(**_kwargs)
+    @counter += 1
+    "feat: grouped commit #{@counter}"
+  end
+end
+
+RSpec.describe 'CommitFlow auto-split', :integration do
   def git!(dir, *args)
     out, err, status = Open3.capture3('git', *args, chdir: dir)
     raise "git #{args.join(' ')} failed: #{err.strip.empty? ? out.strip : err.strip}" unless status.success?
