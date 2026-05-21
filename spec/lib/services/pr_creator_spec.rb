@@ -22,9 +22,9 @@ RSpec.describe Commiti::PrCreator do
       http = instance_double('Net::HTTP')
       response = instance_double('Net::HTTPResponse', code: '201', body: '{"html_url":"https://github.com/acme/repo/pull/42"}')
 
-      allow(Net::HTTP).to receive(:start).with('github.com', 443, use_ssl: true).and_yield(http)
+      allow(Net::HTTP).to receive(:start).with('api.github.com', 443, use_ssl: true).and_yield(http)
       allow(http).to receive(:request) do |request|
-        expect(request.path).to eq('/api/v3/repos/acme/repo/pulls')
+        expect(request.path).to eq('/repos/acme/repo/pulls')
         expect(request['Authorization']).to eq('token gh-token')
         expect(request['Content-Type']).to eq('application/json')
 
@@ -88,7 +88,7 @@ RSpec.describe Commiti::PrCreator do
       http = instance_double('Net::HTTP')
       response = instance_double('Net::HTTPResponse', code: '422', body: '{"message":"Validation Failed"}')
 
-      allow(Net::HTTP).to receive(:start).with('github.com', 443, use_ssl: true).and_yield(http)
+      allow(Net::HTTP).to receive(:start).with('api.github.com', 443, use_ssl: true).and_yield(http)
       allow(http).to receive(:request).and_return(response)
 
       result = described_class.create(

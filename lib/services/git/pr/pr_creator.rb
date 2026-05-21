@@ -33,7 +33,7 @@ module Commiti
     end
 
     def self.create_github_like_pr(remote:, base_branch:, head_branch:, title:, body:, token:)
-      uri = URI("#{remote_base(remote)}/api/v3/repos/#{remote[:namespace]}/#{remote[:repo]}/pulls")
+      uri = github_api_uri(remote, "/repos/#{remote[:namespace]}/#{remote[:repo]}/pulls")
       payload = {
         title: title.to_s,
         head: head_branch.to_s,
@@ -57,6 +57,18 @@ module Commiti
       url
     end
     private_class_method :create_github_like_pr
+
+    # github.com uses api.github.com; GitHub Enterprise uses /api/v3 on the same host.
+    def self.github_api_uri(remote, path)
+      base = if remote[:host].to_s.downcase == 'github.com'
+               'https://api.github.com'
+             else
+               "#{remote[:web_scheme]}://#{remote[:host]}/api/v3"
+             end
+
+      URI("#{base}#{path}")
+    end
+    private_class_method :github_api_uri
 
     def self.create_gitlab_mr(remote:, base_branch:, head_branch:, title:, body:, token:)
       encoded_project = URI.encode_www_form_component("#{remote[:namespace]}/#{remote[:repo]}")
@@ -85,7 +97,9 @@ module Commiti
     end
     private_class_method :create_gitlab_mr
 
-    def self.post_json(uri, payload, headers)
+    def self.post_json(uri, payload, headers, redirect_limit: 5)
+      raise 'Too many redirects' if redirect_limit.zero?
+
       request = Net::HTTP::Post.new(uri)
       request['Content-Type'] = 'application/json'
       headers.each { |k, v| request[k] = v }
@@ -94,11 +108,28 @@ module Commiti
       Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
         response = http.request(request)
         code = response.code.to_i
+
+        if [301, 302, 307, 308].include?(code)
+          location = response['Location'].to_s.strip
+          raise 'Redirect with no Location header' if location.empty?
+
+          new_uri = URI(location)
+          new_uri = URI("#{uri.scheme}://#{uri.host}#{location}") unless new_uri.host
+
+          # Never follow to a different host — that means the API pushed us to the web UI
+          raise "API redirected to a different host (#{new_uri.host}), check namespace/repo in origin URL" \
+            if new_uri.host != uri.host
+
+          return post_json(new_uri, payload, headers, redirect_limit: redirect_limit - 1)
+        end
+
         return response if code.between?(200, 299)
 
         parsed = parse_json(response)
-        error_message = parsed['message'] || parsed['error'] || response.body.to_s.strip
-        raise "PR API request failed (HTTP #{code}): #{error_message}"
+        errors = parsed['errors']&.map { |e| e.slice('field', 'code', 'message').values.join(': ') }&.join(', ')
+        base_msg = parsed['message'] || parsed['error'] || response.body.to_s.strip
+        detail = errors ? "#{base_msg} — #{errors}" : base_msg
+        raise "PR API request failed (HTTP #{code}): #{detail}"
       end
     end
     private_class_method :post_json
