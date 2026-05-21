@@ -118,18 +118,52 @@ Commit edit mode uses:
    - `## Motivation`
    - `## Changes Made`
    - `## Testing Notes`
-3. Builds provider compare/MR URL with prefilled title/body using query params.
-  - API-first path (when token is configured):
-    - GitHub/GitBucket: creates PR via provider API and opens created PR URL.
-    - GitLab: creates MR via provider API and opens created MR URL.
-  - Fallback path (when no token is configured, provider unsupported, or API call fails):
-    - GitHub: compare URL with `quick_pull=1` (opens the PR form directly)
-    - GitBucket: compare URL with `expand=1`
-    - GitLab: new merge request URL
-    - If the URL would exceed safe browser/provider limits, Commiti keeps title prefill and truncates description prefill to the longest text that still fits.
+3. Attempts to create and open PR/MR:
+   - **API-first path** (when token is configured):
+     - GitHub/GitBucket: creates PR via provider API and opens the created PR URL.
+     - GitLab: creates MR via provider API and opens the created MR URL.
+   - **Fallback path** (when no token, provider unsupported, or API call fails):
+     - Opens browser with prefilled PR/MR form using query parameters.
+     - If the URL would exceed safe browser/provider limits (~1800 characters), Commiti keeps the title and intelligently truncates the description to the longest text that still fits.
 4. Asks before opening browser.
 
 Commiti can create PRs/MRs via provider APIs when tokens are configured, and always opens the resulting page in your browser.
+
+### Provider API Logic
+
+When you set a provider token in your configuration, Commiti uses an **API-first strategy**:
+
+**Supported Providers:**
+- **GitHub** (github.com and GitHub Enterprise): Uses GitHub REST API v3
+- **GitLab** (gitlab.com and self-hosted): Uses GitLab API v4
+- **GitBucket**: Uses GitHub-compatible API
+
+**Token Configuration:**
+```dotenv
+COMMITI_GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+COMMITI_GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+COMMITI_GITBUCKET_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**API Request Flow:**
+1. Parses the Git remote URL to extract provider, host, namespace, and repository.
+2. Constructs provider-specific API endpoint and authentication headers.
+3. Sends HTTP POST request with generated PR title and description.
+4. On success (HTTP 2xx): Returns the created PR/MR URL directly.
+5. On failure: Falls back to browser prefill with a user-friendly error message explaining why.
+
+**Error Handling:**
+- **Missing token**: Falls back to browser prefill. (Info message)
+- **Unsupported provider**: Falls back to browser prefill. (Warning message)
+- **API error**: Falls back to browser prefill with error details. (Warning message)
+- **Redirect handling**: Automatically follows HTTP redirects (301, 302, 307, 308) but aborts if redirected to a different host.
+- **Network errors**: Caught and reported with fallback to browser prefill.
+
+**Advantages of API-First:**
+- Creates PR/MR immediately without manual form interaction.
+- Preserves full description text (no URL length constraints).
+- Seamlessly opens the created PR/MR for immediate review and collaboration.
+- Gracefully degrades to browser prefill if API is unavailable.
 
 ### Diff Context Protocol
 
