@@ -49,18 +49,10 @@ module Commiti
       raise 'Google API key is missing. Set GOOGLE_API_KEY (or GEMINI_API_KEY) in your environment.'
     end
 
-    def normalize_float(value, fallback)
+    def normalize_numeric(value, fallback)
       return fallback if value.nil? || value.to_s.strip.empty?
 
-      Float(value)
-    rescue ArgumentError
-      fallback
-    end
-
-    def normalize_integer(value, fallback)
-      return fallback if value.nil? || value.to_s.strip.empty?
-
-      Integer(value)
+      yield(value)
     rescue ArgumentError
       fallback
     end
@@ -87,9 +79,10 @@ module Commiti
       {
         api_key: normalize_api_key(api_key || @config[:google_api_key]),
         model: normalize_model(model || @config[:model]),
-        temperature: normalize_float(temperature || @config[:temperature], DEFAULT_TEMPERATURE),
-        timeout_seconds: normalize_integer(timeout_seconds || @config[:timeout_seconds], DEFAULT_TIMEOUT_SECONDS),
-        open_timeout_seconds: normalize_integer(open_timeout_seconds || @config[:open_timeout_seconds], DEFAULT_OPEN_TIMEOUT_SECONDS)
+        temperature: normalize_numeric(temperature || @config[:temperature], DEFAULT_TEMPERATURE) { |raw| Float(raw) },
+        timeout_seconds: normalize_numeric(timeout_seconds || @config[:timeout_seconds], DEFAULT_TIMEOUT_SECONDS) { |raw| Integer(raw) },
+        open_timeout_seconds: normalize_numeric(open_timeout_seconds || @config[:open_timeout_seconds],
+                                                DEFAULT_OPEN_TIMEOUT_SECONDS) { |raw| Integer(raw) }
       }
     end
 

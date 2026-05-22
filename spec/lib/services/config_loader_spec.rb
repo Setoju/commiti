@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tmpdir'
 
 RSpec.describe Commiti::ConfigLoader do
   describe '.load' do
@@ -10,6 +11,9 @@ RSpec.describe Commiti::ConfigLoader do
       config = described_class.load(env: env)
 
       expect(config[:google_api_key]).to be_nil
+      expect(config[:github_token]).to be_nil
+      expect(config[:gitlab_token]).to be_nil
+      expect(config[:gitbucket_token]).to be_nil
       expect(config[:model]).to eq('gemma-4-31b-it')
       expect(config[:candidates]).to eq(1)
       expect(config[:base_branch]).to eq('main')
@@ -23,6 +27,9 @@ RSpec.describe Commiti::ConfigLoader do
     it 'loads values from environment variables' do
       env.merge!(
         'GOOGLE_API_KEY' => 'key-123',
+        'COMMITI_GITHUB_TOKEN' => 'ghp-123',
+        'COMMITI_GITLAB_TOKEN' => 'glp-123',
+        'COMMITI_GITBUCKET_TOKEN' => 'gbp-123',
         'COMMITI_MODEL' => 'gemini-2.5-flash',
         'COMMITI_CANDIDATES' => '3',
         'COMMITI_BASE_BRANCH' => 'develop',
@@ -36,6 +43,9 @@ RSpec.describe Commiti::ConfigLoader do
       config = described_class.load(env: env)
 
       expect(config[:google_api_key]).to eq('key-123')
+      expect(config[:github_token]).to eq('ghp-123')
+      expect(config[:gitlab_token]).to eq('glp-123')
+      expect(config[:gitbucket_token]).to eq('gbp-123')
       expect(config[:model]).to eq('gemini-2.5-flash')
       expect(config[:candidates]).to eq(3)
       expect(config[:base_branch]).to eq('develop')
@@ -72,6 +82,43 @@ RSpec.describe Commiti::ConfigLoader do
       expect(config[:temperature]).to eq(0.2)
       expect(config[:timeout_seconds]).to eq(180)
       expect(config[:open_timeout_seconds]).to eq(10)
+    end
+
+    it 'loads secure text generation styling from a project config file' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, <<~YAML)
+          text_generation:
+            commit:
+              subject_case: uppercase
+            pr:
+              sections:
+                - name: Overview
+                  guidance: Summarize the change.
+                - name: Validation
+                  guidance: Describe the checks.
+        YAML
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:text_generation][:commit][:subject_case]).to eq('uppercase')
+        expect(config[:text_generation][:pr][:sections].map { |section| section[:name] }).to eq(%w[Overview Validation])
+        expect(config[:text_generation][:pr][:sections].first[:guidance]).to eq('Summarize the change.')
+      end
+    end
+
+    it 'falls back to defaults when the project config file is malformed' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, 'text_generation: [')
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:text_generation][:commit][:subject_case]).to eq('preserve')
+        expect(config[:text_generation][:pr][:sections].map do |section|
+          section[:name]
+        end).to eq(['Summary', 'Motivation', 'Changes Made', 'Testing Notes'])
+      end
     end
   end
 end

@@ -1,0 +1,172 @@
+# frozen_string_literal: true
+
+module Commiti
+  module TextGenerationStyle
+    DEFAULT_PR_SECTIONS = [
+      { name: 'Summary', guidance: 'Summarize the change in one concise paragraph.' },
+      { name: 'Motivation', guidance: 'Explain why this change is needed.' },
+      { name: 'Changes Made', guidance: 'List the concrete changes made in the diff.' },
+      { name: 'Testing Notes', guidance: 'Describe the tests, checks, or verification performed.' }
+    ].freeze
+
+    DEFAULT_CONFIG = {
+      commit: {
+        subject_case: 'preserve'
+      },
+      pr: {
+        sections: DEFAULT_PR_SECTIONS
+      }
+    }.freeze
+
+    ALLOWED_COMMIT_SUBJECT_CASES = %w[preserve uppercase lowercase].freeze
+
+    def self.normalize(raw_config)
+      raw_hash = raw_config.is_a?(Hash) ? raw_config : {}
+      style_hash = lookup(raw_hash, :text_generation) || lookup(raw_hash, :generation) || raw_hash
+
+      {
+        commit: {
+          subject_case: normalize_subject_case(lookup(lookup(style_hash, :commit), :subject_case))
+        },
+        pr: {
+          sections: normalize_pr_sections(lookup(lookup(style_hash, :pr), :sections))
+        }
+      }
+    end
+
+    def self.commit_subject_case(style_config)
+      lookup(lookup(style_config, :commit), :subject_case) || DEFAULT_CONFIG[:commit][:subject_case]
+    end
+
+    def self.commit_subject_case_instruction(style_config)
+      case commit_subject_case(style_config)
+      when 'uppercase'
+        'Capitalize the first alphabetic character in the subject line.'
+      when 'lowercase'
+        'Keep the first alphabetic character in the subject line lowercase.'
+      else
+        'Preserve the natural casing chosen by the content of the change.'
+      end
+    end
+
+    def self.apply_commit_subject_case(subject, style_config)
+      normalized_subject = subject.to_s
+
+      case commit_subject_case(style_config)
+      when 'uppercase'
+        normalized_subject.sub(/\A([[:alpha:]])/) { Regexp.last_match(1).upcase }
+      when 'lowercase'
+        normalized_subject.sub(/\A([[:alpha:]])/) { Regexp.last_match(1).downcase }
+      else
+        normalized_subject
+      end
+    end
+
+    def self.pr_sections(style_config)
+      sections = lookup(lookup(style_config, :pr), :sections)
+      sections = DEFAULT_PR_SECTIONS if sections.nil? || sections.empty?
+      sections
+    end
+
+    def self.pr_section_headers(style_config)
+      pr_sections(style_config).map { |section| "## #{section[:name]}" }
+    end
+
+    def self.pr_section_prompt_lines(style_config)
+      pr_sections(style_config).each_with_index.map do |section, index|
+        guidance = section[:guidance] || default_pr_section_guidance(index, section[:name])
+        "   - ## #{section[:name]}\n     #{guidance}"
+      end.join("\n")
+    end
+
+    def self.first_pr_section_header(style_config)
+      pr_section_headers(style_config).first
+    end
+
+    def self.normalize_subject_case(value)
+      normalized = string_value(value)
+      ALLOWED_COMMIT_SUBJECT_CASES.include?(normalized) ? normalized : DEFAULT_CONFIG[:commit][:subject_case]
+    end
+    private_class_method :normalize_subject_case
+
+    def self.normalize_pr_sections(value)
+      sections = Array(value).filter_map { |section| normalize_section(section) }
+      sections.empty? ? DEFAULT_PR_SECTIONS : sections
+    end
+    private_class_method :normalize_pr_sections
+
+    def self.normalize_section(section)
+      case section
+      when String
+        name = string_value(section)
+        return nil if name.empty?
+
+        { name: name, guidance: nil }
+      when Hash
+        # Strict schema: only accept `name` and `guidance` keys
+        allowed_keys = %w[name guidance]
+        provided_keys = section.keys.map(&:to_s)
+        return nil unless (provided_keys - allowed_keys).empty?
+
+        name = string_value(lookup(section, :name))
+        return nil if name.empty?
+
+        guidance_raw = lookup(section, :guidance)
+        guidance = sanitize_guidance(guidance_raw)
+        { name: name, guidance: guidance.empty? ? nil : guidance }
+      end
+    end
+    private_class_method :normalize_section
+
+    def self.sanitize_guidance(raw)
+      return '' if raw.nil?
+
+      text = raw.to_s.dup
+      # Remove code fences and backtick blocks
+      text.gsub!(/```.*?```/m, ' ')
+      text.gsub!(/`.*?`/, ' ')
+      # Remove HTML tags
+      text.gsub!(/<[^>]+>/, ' ')
+      # Neutralize suspicious phrases that look like instructions
+      suspicious = Regexp.union(
+        /ignore previous/i,
+        /disregard previous/i,
+        /do not follow/i,
+        /only follow/i,
+        /override previous/i,
+        /ignore all previous instructions/i,
+        /follow only/i
+      )
+      text.gsub!(suspicious, '[redacted]')
+      # Collapse whitespace and truncate
+      text = text.strip.gsub(/ +/, ' ').gsub(/\s+/, ' ')
+      max = 300
+      text[0, max]
+    end
+    private_class_method :sanitize_guidance
+
+    def self.default_pr_section_guidance(index, name)
+      defaults = [
+        'Summarize the overall change and the problem it solves.',
+        'Explain the motivation or context behind the change.',
+        'List the concrete code, docs, or workflow updates.',
+        'Describe the verification performed or why it was not needed.'
+      ]
+
+      defaults[index] || "Describe the #{name} aspect of the change using concrete details from the diff."
+    end
+    private_class_method :default_pr_section_guidance
+
+    def self.lookup(hash, key)
+      return nil unless hash.is_a?(Hash)
+
+      hash[key] || hash[key.to_s] || hash[key.to_sym]
+    end
+    private_class_method :lookup
+
+    def self.string_value(value)
+      value.to_s.strip
+    end
+    private_class_method :string_value
+  end
+end

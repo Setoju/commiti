@@ -45,5 +45,29 @@ RSpec.describe Commiti::PromptBuilder do
       expect(prompt[:user]).to include('- lib/a.rb')
       expect(prompt[:user]).to include('- lib/b.rb')
     end
+
+    it 'renders configurable commit casing and PR sections' do
+      style_config = {
+        commit: { subject_case: 'uppercase' },
+        pr: {
+          sections: [
+            { name: 'Overview', guidance: 'Summarize the change.' },
+            { name: 'Validation', guidance: 'Describe the checks.' }
+          ]
+        }
+      }
+
+      commit_prompt = described_class.build(type: :commit, diff: 'diff --git a/a.rb b/a.rb', style_config: style_config)
+      pr_prompt = described_class.build(type: :pr, diff: '### a.rb\n- changed', style_config: style_config)
+
+      expect(commit_prompt[:system]).to include('Capitalize the first alphabetic character in the subject line.')
+      expect(pr_prompt[:system]).to include('Include ONLY these sections in this exact order: ## Overview, ## Validation')
+      expect(pr_prompt[:system]).to include('## Overview')
+      expect(pr_prompt[:system]).to include('## Validation')
+      # Guidance is included in the user prompt as an untrusted block
+      expect(pr_prompt[:user]).to include('Project-provided guidance (UNTRUSTED')
+      expect(pr_prompt[:user]).to include('Overview: Summarize the change.')
+      expect(pr_prompt[:user]).to include('Validation: Describe the checks.')
+    end
   end
 end

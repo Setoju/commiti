@@ -41,7 +41,7 @@ RSpec.describe Commiti::PrOpener do
       expect(query['merge_request[description]']).to eq(['MR body'])
     end
 
-    it 'omits GitHub body prefill when URL would be too long' do
+    it 'truncates GitHub body prefill when URL would be too long' do
       url = described_class.compare_url(
         origin_url: 'git@github.com:acme/commiti.git',
         base_branch: 'main',
@@ -52,11 +52,12 @@ RSpec.describe Commiti::PrOpener do
 
       query = CGI.parse(URI.parse(url).query)
       expect(query['title']).to eq(['My PR'])
-      expect(query).not_to have_key('body')
+      expect(query['body'].first).not_to be_empty
+      expect(query['body'].first.length).to be < 6_000
       expect(url.length).to be <= described_class::MAX_PREFILLED_URL_LENGTH
     end
 
-    it 'omits GitLab description prefill when URL would be too long' do
+    it 'truncates GitLab description prefill when URL would be too long' do
       url = described_class.compare_url(
         origin_url: 'git@gitlab.com:acme/subgroup/commiti.git',
         base_branch: 'main',
@@ -67,7 +68,25 @@ RSpec.describe Commiti::PrOpener do
 
       query = CGI.parse(URI.parse(url).query)
       expect(query['merge_request[title]']).to eq(['My MR'])
-      expect(query).not_to have_key('merge_request[description]')
+      description = query['merge_request[description]'].first
+      expect(description).not_to be_empty
+      expect(description.length).to be < 6_000
+      expect(url.length).to be <= described_class::MAX_PREFILLED_URL_LENGTH
+    end
+
+    it 'truncates GitBucket body prefill when URL would be too long' do
+      url = described_class.compare_url(
+        origin_url: 'https://gitbucket.example.com/acme/commiti.git',
+        base_branch: 'main',
+        head_branch: 'feat-x',
+        title: 'My PR',
+        body: 'x' * 6_000
+      )
+
+      query = CGI.parse(URI.parse(url).query)
+      expect(query['title']).to eq(['My PR'])
+      expect(query['body'].first).not_to be_empty
+      expect(query['body'].first.length).to be < 6_000
       expect(url.length).to be <= described_class::MAX_PREFILLED_URL_LENGTH
     end
 
@@ -99,6 +118,92 @@ RSpec.describe Commiti::PrOpener do
         )
       end.to raise_error('Supported providers for browser PR opening are GitHub, GitLab, and GitBucket.')
     end
+
+    it 'builds GitHub Enterprise compare URL correctly' do
+      url = described_class.compare_url(
+        origin_url: 'git@github.enterprise.com:acme/commiti.git',
+        base_branch: 'main',
+        head_branch: 'feat-x',
+        title: 'My PR',
+        body: 'Body text'
+      )
+
+      expect(url).to start_with('https://github.enterprise.com/acme/commiti/compare/main...feat-x?')
+
+      query = CGI.parse(URI.parse(url).query)
+      expect(query['title']).to eq(['My PR'])
+      expect(query['body']).to eq(['Body text'])
+    end
+
+    it 'handles empty body and omits body parameter' do
+      url = described_class.compare_url(
+        origin_url: 'git@github.com:acme/commiti.git',
+        base_branch: 'main',
+        head_branch: 'feat-x',
+        title: 'My PR',
+        body: ''
+      )
+
+      query = CGI.parse(URI.parse(url).query)
+      expect(query['title']).to eq(['My PR'])
+      expect(query['body']).to be_empty
+    end
+
+    it 'URL-encodes branch names with special characters' do
+      url = described_class.compare_url(
+        origin_url: 'git@github.com:acme/commiti.git',
+        base_branch: 'main',
+        head_branch: 'feat/fix-issue#42',
+        title: 'My PR',
+        body: 'Body'
+      )
+
+      expect(url).to include('feat%2Ffix-issue%2342')
+    end
+
+    it 'URL-encodes special characters in title and body' do
+      url = described_class.compare_url(
+        origin_url: 'git@github.com:acme/commiti.git',
+        base_branch: 'main',
+        head_branch: 'feat-x',
+        title: 'Fix & verify special <chars>',
+        body: 'Body with "quotes" and & ampersand'
+      )
+
+      query = CGI.parse(URI.parse(url).query)
+      expect(query['title']).to eq(['Fix & verify special <chars>'])
+      expect(query['body']).to eq(['Body with "quotes" and & ampersand'])
+    end
+
+    it 'builds HTTPS GitHub URL from HTTPS origin' do
+      url = described_class.compare_url(
+        origin_url: 'https://github.com/acme/commiti.git',
+        base_branch: 'main',
+        head_branch: 'feat-x',
+        title: 'My PR',
+        body: 'Body text'
+      )
+
+      expect(url).to start_with('https://github.com/acme/commiti/compare/main...feat-x?')
+
+      query = CGI.parse(URI.parse(url).query)
+      expect(query['quick_pull']).to eq(['1'])
+    end
+
+    it 'builds GitLab URL from HTTPS origin' do
+      url = described_class.compare_url(
+        origin_url: 'https://gitlab.com/acme/subgroup/commiti.git',
+        base_branch: 'main',
+        head_branch: 'feat-x',
+        title: 'My MR',
+        body: 'MR body'
+      )
+
+      expect(url).to start_with('https://gitlab.com/acme/subgroup/commiti/-/merge_requests/new?')
+
+      query = CGI.parse(URI.parse(url).query)
+      expect(query['merge_request[source_branch]']).to eq(['feat-x'])
+    end
   end
 
   describe '.suggest_title' do
@@ -124,6 +229,31 @@ RSpec.describe Commiti::PrOpener do
       BODY
 
       expect(described_class.suggest_title(pr_body, head_branch: 'feature/cache')).to eq('Update feature/cache')
+    end
+
+    it 'handles empty summary section' do
+      pr_body = <<~BODY
+        ## Summary
+
+        ## Motivation
+        Some reason
+      BODY
+
+      expect(described_class.suggest_title(pr_body, head_branch: 'feature/cache')).to eq('Update feature/cache')
+    end
+
+    it 'extracts first non-empty line from summary' do
+      pr_body = <<~BODY
+        ## Summary
+
+
+        First content line
+
+        ## Motivation
+        Some reason
+      BODY
+
+      expect(described_class.suggest_title(pr_body, head_branch: 'feature/cache')).to eq('First content line')
     end
   end
 

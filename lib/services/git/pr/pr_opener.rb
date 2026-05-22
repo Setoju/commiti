@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'uri'
+require_relative 'remote_parser'
+require_relative 'browser_opener'
 
 module Commiti
   module PrOpener
@@ -8,42 +10,120 @@ module Commiti
     MAX_PREFILLED_URL_LENGTH = 1800
     MAX_PREFILLED_TITLE_LENGTH = 120
 
+    extend PrRemoteParser
+
     def self.compare_url(origin_url:, base_branch:, head_branch:, title:, body:)
       remote = extract_remote_info(origin_url)
       raise 'Supported providers for browser PR opening are GitHub, GitLab, and GitBucket.' if remote.nil?
+
+      compare_url_candidates(
+        remote: remote,
+        base_branch: base_branch,
+        head_branch: head_branch,
+        title: title,
+        body: body
+      ).find { |url| url.length <= MAX_PREFILLED_URL_LENGTH } || compare_url_candidates(
+        remote: remote,
+        base_branch: base_branch,
+        head_branch: head_branch,
+        title: title,
+        body: body
+      ).last
+    end
+
+    def self.compare_url_candidates(remote:, base_branch:, head_branch:, title:, body:)
+      truncated_body = truncate_body_to_fit(
+        remote: remote,
+        base_branch: base_branch,
+        head_branch: head_branch,
+        title: title,
+        body: body
+      )
+
+      [
+        prefilled_url(
+          remote: remote,
+          base_branch: base_branch,
+          head_branch: head_branch,
+          title: title,
+          body: body,
+          include_title: true,
+          include_body: true
+        ),
+        prefilled_url(
+          remote: remote,
+          base_branch: base_branch,
+          head_branch: head_branch,
+          title: title,
+          body: truncated_body,
+          include_title: true,
+          include_body: !truncated_body.to_s.empty?
+        ),
+        prefilled_url(
+          remote: remote,
+          base_branch: base_branch,
+          head_branch: head_branch,
+          title: title,
+          body: body,
+          include_title: true,
+          include_body: false
+        ),
+        prefilled_url(
+          remote: remote,
+          base_branch: base_branch,
+          head_branch: head_branch,
+          title: title,
+          body: body,
+          include_title: false,
+          include_body: false
+        )
+      ]
+    end
+    private_class_method :compare_url_candidates
+
+    def self.truncate_body_to_fit(remote:, base_branch:, head_branch:, title:, body:)
+      text = body.to_s
+      return '' if text.empty?
 
       full_url = prefilled_url(
         remote: remote,
         base_branch: base_branch,
         head_branch: head_branch,
         title: title,
-        body: body,
+        body: text,
         include_title: true,
         include_body: true
       )
-      return full_url if full_url.length <= MAX_PREFILLED_URL_LENGTH
+      return text if full_url.length <= MAX_PREFILLED_URL_LENGTH
 
-      without_body = prefilled_url(
-        remote: remote,
-        base_branch: base_branch,
-        head_branch: head_branch,
-        title: title,
-        body: body,
-        include_title: true,
-        include_body: false
-      )
-      return without_body if without_body.length <= MAX_PREFILLED_URL_LENGTH
+      low = 0
+      high = text.length
+      best = ''
 
-      prefilled_url(
-        remote: remote,
-        base_branch: base_branch,
-        head_branch: head_branch,
-        title: title,
-        body: body,
-        include_title: false,
-        include_body: false
-      )
+      while low <= high
+        mid = (low + high) / 2
+        candidate_body = text[0, mid]
+        candidate_url = prefilled_url(
+          remote: remote,
+          base_branch: base_branch,
+          head_branch: head_branch,
+          title: title,
+          body: candidate_body,
+          include_title: true,
+          include_body: !candidate_body.empty?
+        )
+
+        if candidate_url.length <= MAX_PREFILLED_URL_LENGTH
+          best = candidate_body
+          low = mid + 1
+        else
+          high = mid - 1
+        end
+      end
+
+      best
     end
+    private_class_method :truncate_body_to_fit
 
     def self.prefilled_url(remote:, base_branch:, head_branch:, title:, body:, include_title:, include_body:)
       if remote[:provider] == :gitlab
@@ -115,68 +195,6 @@ module Commiti
       URI.encode_www_form_component(branch.to_s).gsub('+', '%20')
     end
 
-    def self.extract_remote_info(origin_url)
-      remote_text = origin_url.to_s.strip
-      return nil if remote_text.empty?
-
-      parsed = parse_uri_remote(remote_text) || parse_scp_remote(remote_text)
-      return nil if parsed.nil?
-
-      normalized = normalize_repo_path(parsed[:path])
-      return nil if normalized.nil?
-
-      provider = detect_provider(parsed[:host])
-      return nil if provider.nil?
-
-      {
-        provider: provider,
-        host: parsed[:host],
-        web_scheme: parsed[:web_scheme],
-        namespace: normalized[:namespace],
-        repo: normalized[:repo]
-      }
-    end
-
-    def self.parse_uri_remote(remote_text)
-      uri = URI.parse(remote_text)
-      return nil unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS) || uri.scheme == 'ssh'
-      return nil if uri.host.to_s.strip.empty?
-
-      web_scheme = uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS) ? uri.scheme : 'https'
-      { host: uri.host, path: uri.path, web_scheme: web_scheme }
-    rescue URI::InvalidURIError
-      nil
-    end
-
-    def self.parse_scp_remote(remote_text)
-      match = remote_text.match(SCP_REMOTE)
-      return nil if match.nil?
-
-      { host: match[:host], path: match[:path], web_scheme: 'https' }
-    end
-
-    def self.normalize_repo_path(raw_path)
-      clean = raw_path.to_s.strip
-      clean = clean.sub(%r{\A/+}, '').sub(%r{/+\z}, '')
-      clean = clean.sub(/\.git\z/, '')
-      segments = clean.split('/').reject(&:empty?)
-      return nil if segments.length < 2
-
-      {
-        namespace: segments[0..-2].join('/'),
-        repo: segments[-1]
-      }
-    end
-
-    def self.detect_provider(host)
-      normalized = host.to_s.downcase
-      return :gitlab if normalized.include?('gitlab')
-      return :gitbucket if normalized.include?('gitbucket')
-      return :github if normalized.include?('github')
-
-      nil
-    end
-
     def self.suggest_title(pr_body, head_branch:)
       in_summary = false
       pr_body.to_s.each_line do |line|
@@ -197,34 +215,7 @@ module Commiti
     end
 
     def self.open_in_browser(url)
-      success = if windows?
-                  open_windows_browser(url)
-                elsif mac?
-                  system('open', url)
-                else
-                  system('xdg-open', url)
-                end
-
-      raise 'Failed to open browser for PR URL.' unless success
-
-      true
-    end
-
-    def self.open_windows_browser(url)
-      cleaned_url = url.to_s.strip.sub(/\A\\+/, '')
-
-      # Prefer shell protocol handler. This bypasses cmd/explorer parsing of '&'.
-      return true if system('rundll32', 'url.dll,FileProtocolHandler', cleaned_url)
-
-      # PowerShell fallback, passing URL as an argument to avoid command parsing.
-      system(
-        'powershell',
-        '-NoProfile',
-        '-Command',
-        '$u=$args[0]; Start-Process -FilePath $u',
-        '--',
-        cleaned_url
-      )
+      Commiti::PrBrowserOpener.open_in_browser(url)
     end
 
     def self.extract_owner_repo(origin_url)
@@ -232,14 +223,6 @@ module Commiti
       return nil if info.nil?
 
       { owner: info[:namespace], repo: info[:repo] }
-    end
-
-    def self.windows?
-      RUBY_PLATFORM.include?('mingw') || RUBY_PLATFORM.include?('mswin')
-    end
-
-    def self.mac?
-      RUBY_PLATFORM.include?('darwin')
     end
   end
 end

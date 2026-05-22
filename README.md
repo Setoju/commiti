@@ -39,12 +39,17 @@ commiti [options]
 
 ## Configuration
 
-Commiti uses a single configuration approach: environment variables.
+Commiti uses environment variables for secrets and a checked-in project config file for text-generation styling.
 
 Set variables in your shell, CI secret manager, or local `.env` file (in your project):
 
 ```dotenv
 GOOGLE_API_KEY=your_google_ai_key
+
+# Optional: provider API tokens for API-first PR/MR creation
+# COMMITI_GITHUB_TOKEN=your_github_token
+# COMMITI_GITLAB_TOKEN=your_gitlab_token
+# COMMITI_GITBUCKET_TOKEN=your_gitbucket_token
 
 # Optional overrides:
 # COMMITI_MODEL=gemma-4-31b-it
@@ -52,11 +57,30 @@ GOOGLE_API_KEY=your_google_ai_key
 # COMMITI_BASE_BRANCH=main
 # COMMITI_NO_COPY=false
 # COMMITI_AUTO_SPLIT=false
+
+# Optional per-project prompt styling (safe YAML, no code execution):
+# COMMITI_CONFIG=.commiti.yml
 ```
 
 `GEMINI_API_KEY` is also accepted as an alias for `GOOGLE_API_KEY`.
 
 You can copy `.env.example` as a starting point.
+
+For project-specific wording and structure, add a `.commiti.yml` file at the repo root:
+
+```yaml
+text_generation:
+  commit:
+    subject_case: uppercase # uppercase, lowercase, or preserve
+  pr:
+    sections:
+      - name: Overview
+        guidance: Summarize the change in one paragraph.
+      - name: Validation
+        guidance: Describe the checks or tests that were run.
+```
+
+The file is parsed with safe YAML loading, and Commiti only accepts declarative styling settings from it.
 
 Your API key is sent directly from your local process to Google's API.
 Commiti does not store it and does not proxy requests through any Commiti server.
@@ -113,14 +137,52 @@ Commit edit mode uses:
    - `## Motivation`
    - `## Changes Made`
    - `## Testing Notes`
-3. Builds provider compare/MR URL with prefilled title/body using query params.
-  - GitHub: compare URL with `quick_pull=1` (opens the PR form directly)
-  - GitBucket: compare URL with `expand=1`
-  - GitLab: new merge request URL
-   - If the URL would exceed safe browser/provider limits, Commiti drops description prefill automatically and keeps the shortest usable URL.
+3. Attempts to create and open PR/MR:
+   - **API-first path** (when token is configured):
+     - GitHub/GitBucket: creates PR via provider API and opens the created PR URL.
+     - GitLab: creates MR via provider API and opens the created MR URL.
+   - **Fallback path** (when no token, provider unsupported, or API call fails):
+     - Opens browser with prefilled PR/MR form using query parameters.
+     - If the URL would exceed safe browser/provider limits (~1800 characters), Commiti keeps the title and intelligently truncates the description to the longest text that still fits.
 4. Asks before opening browser.
 
-The tool opens a browser URL only. It does not call provider APIs.
+Commiti can create PRs/MRs via provider APIs when tokens are configured, and always opens the resulting page in your browser.
+
+### Provider API Logic
+
+When you set a provider token in your configuration, Commiti uses an **API-first strategy**:
+
+**Supported Providers:**
+- **GitHub** (github.com and GitHub Enterprise): Uses GitHub REST API v3
+- **GitLab** (gitlab.com and self-hosted): Uses GitLab API v4
+- **GitBucket**: Uses GitHub-compatible API
+
+**Token Configuration:**
+```dotenv
+COMMITI_GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+COMMITI_GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+COMMITI_GITBUCKET_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**API Request Flow:**
+1. Parses the Git remote URL to extract provider, host, namespace, and repository.
+2. Constructs provider-specific API endpoint and authentication headers.
+3. Sends HTTP POST request with generated PR title and description.
+4. On success (HTTP 2xx): Returns the created PR/MR URL directly.
+5. On failure: Falls back to browser prefill with a user-friendly error message explaining why.
+
+**Error Handling:**
+- **Missing token**: Falls back to browser prefill. (Info message)
+- **Unsupported provider**: Falls back to browser prefill. (Warning message)
+- **API error**: Falls back to browser prefill with error details. (Warning message)
+- **Redirect handling**: Automatically follows HTTP redirects (301, 302, 307, 308) but aborts if redirected to a different host.
+- **Network errors**: Caught and reported with fallback to browser prefill.
+
+**Advantages of API-First:**
+- Creates PR/MR immediately without manual form interaction.
+- Preserves full description text (no URL length constraints).
+- Seamlessly opens the created PR/MR for immediate review and collaboration.
+- Gracefully degrades to browser prefill if API is unavailable.
 
 ### Diff Context Protocol
 
@@ -180,7 +242,7 @@ Core services:
 - `lib/services/diff_summarization/diff_summarizer.rb`: Orchestrates large-diff summarization and summary combine.
   - `lib/services/diff_summarization/batch_runner.rb`: Runs asynchronous, batched per-file summarization jobs.
   - `lib/services/diff_summarization/fallback_builder.rb`: Builds deterministic summaries when model summarization fails or times out.
-- `lib/services/helpers/config_loader.rb`: Loads configuration from environment variables.
+- `lib/services/helpers/config_loader.rb`: Loads environment config plus secure project-level text-generation styling.
   - `lib/services/helpers/prompt_builder.rb`: Builds strict system/user prompts for commit and PR modes.
   - `lib/services/helpers/interactive_prompt.rb`: Handles confirmation prompts, candidate selection, editor loop, and commit message validation.
   - `lib/services/helpers/clipboard.rb`: Provides cross-platform clipboard support.

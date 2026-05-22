@@ -2,11 +2,11 @@
 
 Gem::Specification.new do |spec|
   spec.name = 'commiti'
-  spec.version = '1.3.1'
+  spec.version = '1.3.2'
   spec.authors = ['Setoju']
   spec.email = ['setoju48@gmail.com']
   spec.summary = 'AI-powered commit and PR description generator using Google AI models'
-  spec.description = 'Generates git commit messages and PR descriptions using Google AI text generation models. Supports GitHub, GitLab, and GitBucket with prefilled PR/MR forms.'
+  spec.description = 'Generates git commit messages and PR descriptions using Google AI text generation models. '
   spec.homepage = 'https://github.com/setoju/commiti'
   spec.license = 'MIT'
 
