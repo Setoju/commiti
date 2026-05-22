@@ -2,6 +2,7 @@
 
 require_relative 'services/git/git_reader'
 require_relative 'services/git/git_writer'
+require_relative 'services/text_generation_style'
 require_relative 'services/google_client'
 require_relative 'services/helpers/config_loader'
 require_relative 'services/git/diff_parser'
