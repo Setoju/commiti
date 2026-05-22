@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file.
 - Added comprehensive Provider API Logic section to README explaining GitHub, GitLab, and GitBucket API-first PR/MR creation.
 - Documented token configuration and error handling strategy for API-first flow.
 - Clarified graceful fallback to browser prefill when API is unavailable or unsupported.
+- Added basic text generation configuration for commit messages and pr sections.
 
 ## [1.3.0] - 2026-05-19
 
