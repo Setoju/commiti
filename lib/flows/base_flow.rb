@@ -18,7 +18,8 @@ module Commiti
           diff: diff,
           client: client,
           run_stage: method(:run_stage),
-          model: selected_model
+          model: selected_model,
+          text_generation_config: options[:text_generation]
         )
         Commiti::MessagePresenter.print_summarization_notice(context[:summarized_result])
 
@@ -91,7 +92,11 @@ module Commiti
       end
 
       def message_generator
-        @message_generator ||= Commiti::MessageGenerator.new(flow_type: flow_type, run_stage: method(:run_stage))
+        @message_generator ||= Commiti::MessageGenerator.new(
+          flow_type: flow_type,
+          run_stage: method(:run_stage),
+          text_generation_config: options[:text_generation]
+        )
       end
     end
   end
