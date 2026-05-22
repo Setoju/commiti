@@ -60,11 +60,11 @@ RSpec.describe Commiti::Flows::PrFlow do
 
   it 'falls back to prefilled browser URL when provider API call fails' do
     allow(Commiti::PrCreator).to receive(:create).and_return({
-      url: nil,
-      reason: :api_error,
-      provider: :github,
-      error: 'Connection timeout'
-    })
+                                                               url: nil,
+                                                               reason: :api_error,
+                                                               provider: :github,
+                                                               error: 'Connection timeout'
+                                                             })
     expect(Commiti::PrOpener).to receive(:compare_url).and_return('https://github.com/acme/repo/compare/main...feat-x')
     expect(Commiti::InteractivePrompt).to receive(:ask_yes_no)
       .with('Open prefilled PR page in browser now?', default: :no)
