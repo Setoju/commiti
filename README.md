@@ -39,7 +39,7 @@ commiti [options]
 
 ## Configuration
 
-Commiti uses a single configuration approach: environment variables.
+Commiti uses environment variables for secrets and a checked-in project config file for text-generation styling.
 
 Set variables in your shell, CI secret manager, or local `.env` file (in your project):
 
@@ -57,11 +57,30 @@ GOOGLE_API_KEY=your_google_ai_key
 # COMMITI_BASE_BRANCH=main
 # COMMITI_NO_COPY=false
 # COMMITI_AUTO_SPLIT=false
+
+# Optional per-project prompt styling (safe YAML, no code execution):
+# COMMITI_CONFIG=.commiti.yml
 ```
 
 `GEMINI_API_KEY` is also accepted as an alias for `GOOGLE_API_KEY`.
 
 You can copy `.env.example` as a starting point.
+
+For project-specific wording and structure, add a `.commiti.yml` file at the repo root:
+
+```yaml
+text_generation:
+  commit:
+    subject_case: uppercase # uppercase, lowercase, or preserve
+  pr:
+    sections:
+      - name: Overview
+        guidance: Summarize the change in one paragraph.
+      - name: Validation
+        guidance: Describe the checks or tests that were run.
+```
+
+The file is parsed with safe YAML loading, and Commiti only accepts declarative styling settings from it.
 
 Your API key is sent directly from your local process to Google's API.
 Commiti does not store it and does not proxy requests through any Commiti server.
@@ -223,7 +242,7 @@ Core services:
 - `lib/services/diff_summarization/diff_summarizer.rb`: Orchestrates large-diff summarization and summary combine.
   - `lib/services/diff_summarization/batch_runner.rb`: Runs asynchronous, batched per-file summarization jobs.
   - `lib/services/diff_summarization/fallback_builder.rb`: Builds deterministic summaries when model summarization fails or times out.
-- `lib/services/helpers/config_loader.rb`: Loads configuration from environment variables.
+- `lib/services/helpers/config_loader.rb`: Loads environment config plus secure project-level text-generation styling.
   - `lib/services/helpers/prompt_builder.rb`: Builds strict system/user prompts for commit and PR modes.
   - `lib/services/helpers/interactive_prompt.rb`: Handles confirmation prompts, candidate selection, editor loop, and commit message validation.
   - `lib/services/helpers/clipboard.rb`: Provides cross-platform clipboard support.
