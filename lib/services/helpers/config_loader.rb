@@ -1,7 +1,12 @@
 # frozen_string_literal: true
 
+require 'yaml'
+require_relative '../text_generation_style'
+
 module Commiti
   class ConfigLoader
+    DEFAULT_TEXT_GENERATION_CONFIG = Commiti::TextGenerationStyle::DEFAULT_CONFIG
+
     DEFAULT_CONFIG = {
       google_api_key: nil,
       github_token: nil,
@@ -14,13 +19,14 @@ module Commiti
       auto_split: false,
       temperature: Commiti::GoogleClient::DEFAULT_TEMPERATURE,
       timeout_seconds: Commiti::GoogleClient::DEFAULT_TIMEOUT_SECONDS,
-      open_timeout_seconds: Commiti::GoogleClient::DEFAULT_OPEN_TIMEOUT_SECONDS
+      open_timeout_seconds: Commiti::GoogleClient::DEFAULT_OPEN_TIMEOUT_SECONDS,
+      text_generation: DEFAULT_TEXT_GENERATION_CONFIG
     }.freeze
 
     # Loads configuration from environment variables.
     # Keys are returned as symbols with parsed values.
-    def self.load(env: ENV)
-      {
+    def self.load(env: ENV, cwd: Dir.pwd)
+      DEFAULT_CONFIG.merge(
         google_api_key: google_api_key_from_env(env),
         github_token: present_or_nil(env.fetch('COMMITI_GITHUB_TOKEN', nil)),
         gitlab_token: present_or_nil(env.fetch('COMMITI_GITLAB_TOKEN', nil)),
@@ -33,9 +39,34 @@ module Commiti
         temperature: float_or_default(env.fetch('COMMITI_MODEL_TEMPERATURE', nil), DEFAULT_CONFIG[:temperature]),
         timeout_seconds: integer_or_default(env.fetch('COMMITI_MODEL_TIMEOUT_SECONDS', nil), DEFAULT_CONFIG[:timeout_seconds]),
         open_timeout_seconds: integer_or_default(env.fetch('COMMITI_MODEL_OPEN_TIMEOUT_SECONDS', nil),
-                                                 DEFAULT_CONFIG[:open_timeout_seconds])
-      }
+                                                 DEFAULT_CONFIG[:open_timeout_seconds]),
+        text_generation: load_text_generation_config(env: env, cwd: cwd)
+      )
     end
+
+    def self.load_text_generation_config(env:, cwd:)
+      config_path = configured_path(env: env, cwd: cwd)
+      project_config = read_yaml_config(config_path)
+      Commiti::TextGenerationStyle.normalize(project_config)
+    end
+    private_class_method :load_text_generation_config
+
+    def self.configured_path(env:, cwd:)
+      configured = present_or_nil(env.fetch('COMMITI_CONFIG', nil))
+      path = configured || File.join(cwd, '.commiti.yml')
+      File.expand_path(path, cwd)
+    end
+    private_class_method :configured_path
+
+    def self.read_yaml_config(path)
+      return {} unless File.file?(path)
+
+      raw = YAML.safe_load_file(path, permitted_classes: [], permitted_symbols: [], aliases: false)
+      raw.is_a?(Hash) ? raw : {}
+    rescue StandardError
+      {}
+    end
+    private_class_method :read_yaml_config
 
     def self.google_api_key_from_env(env)
       present_or_nil(env.fetch('GOOGLE_API_KEY', nil)) ||
