@@ -1,0 +1,37 @@
+## Example Commiti project configuration (safe, declarative)
+## Save as .commiti.yml at the repo root or point COMMITI_CONFIG to it.
+## This file is parsed via YAML.safe_load and only controls prompt styling.
+
+text_generation:
+  # Commit subject casing: 'preserve' | 'uppercase' | 'lowercase'
+  commit:
+    subject_case: preserve
+
+  # PR description sections: ordered list of sections to require in PR body.
+  # Each entry must be an object with `name` and optional `guidance`.
+  # The `name` becomes the exact `## <Name>` header used in the PR system prompt.
+  pr:
+    sections:
+      - name: Summary
+        guidance: A one-paragraph summary of the change.
+      - name: Motivation
+        guidance: Why this change is needed.
+      - name: Changes Made
+        guidance: Bulleted list of concrete changes (files, methods, behavior).
+      - name: Testing Notes
+        guidance: Tests run or manual verification steps.
+
+# Short examples:
+# Use uppercase subject start for commit subjects
+# text_generation:
+#   commit:
+#     subject_case: uppercase
+
+# Rename PR sections and change order
+# text_generation:
+#   pr:
+#     sections:
+#       - name: Overview
+#         guidance: High-level summary
+#       - name: How I Tested
+#         guidance: Manual or automated steps
