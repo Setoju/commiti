@@ -243,7 +243,8 @@ RSpec.describe Commiti::PrCreator do
 
     it 'returns api_error with GitLab error details array' do
       http = instance_double('Net::HTTP')
-      error_response = instance_double('Net::HTTPResponse', code: '422', body: '{"message":"Validation Failed","errors":[{"field":"source_branch","code":"taken","message":"has already been taken"}]}')
+      error_response = instance_double('Net::HTTPResponse', code: '422',
+                                                            body: '{"message":"Validation Failed","errors":[{"field":"source_branch","code":"taken","message":"has already been taken"}]}')
 
       allow(Net::HTTP).to receive(:start).with('gitlab.com', 443, use_ssl: true).and_yield(http)
       allow(http).to receive(:request).and_return(error_response)
