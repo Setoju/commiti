@@ -10,4 +10,5 @@ gem 'tty-reader'
 group :development, :test do
   gem 'rspec', '~> 3.13'
   gem 'rubocop', require: false
+  gem 'simplecov', require: false
 end
