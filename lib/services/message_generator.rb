@@ -10,9 +10,10 @@ module Commiti
     DEFAULT_COMMIT_SUBJECT = 'update project files'
     COMMIT_PREFIX_PATTERN = /\A(feat|fix|chore|refactor|docs|style|test|perf|ci|build|revert)(\([^)]+\))?!?\s*:?\s*/i
 
-    def initialize(flow_type:, run_stage:)
+    def initialize(flow_type:, run_stage:, text_generation_config: nil)
       @flow_type = flow_type
       @run_stage = run_stage
+      @text_generation_config = text_generation_config || Commiti::TextGenerationStyle::DEFAULT_CONFIG
     end
 
     def generate_candidates(client:, prompt:, diff_metadata:, count:, model:)
@@ -31,6 +32,7 @@ module Commiti
                                label: "Generating #{flow_type} with Google AI"
                              ))
       reason = invalid_generation_reason(message: message, diff_metadata: diff_metadata)
+      return normalize_commit_message(message, diff_metadata: diff_metadata) if reason.nil? && flow_type == :commit
       return message if reason.nil?
 
       puts "\nGenerated output looked weak: #{reason}"
@@ -44,19 +46,19 @@ module Commiti
                                        label: "Regenerating #{flow_type} with stricter prompt"
                                      ))
       retry_reason = invalid_generation_reason(message: retried_message, diff_metadata: diff_metadata)
-      return retried_message if retry_reason.nil?
-
-      if flow_type == :commit
-        normalized_commit = normalize_commit_with_prefix(retried_message, diff_metadata: diff_metadata)
-        return normalized_commit unless normalized_commit.nil?
+      if flow_type == :commit && retry_reason&.include?(COMMIT_PREFIX_ERROR)
+        normalized_commit = normalize_commit_message(retried_message, diff_metadata: diff_metadata)
+        return normalized_commit || retried_message
       end
+      return normalize_commit_message(retried_message, diff_metadata: diff_metadata) if retry_reason.nil? && flow_type == :commit
+      return retried_message if retry_reason.nil?
 
       raise "Generated #{flow_type} is still invalid after retry: #{retry_reason}"
     end
 
     private
 
-    attr_reader :flow_type, :run_stage
+    attr_reader :flow_type, :run_stage, :text_generation_config
 
     def generate_from_client(client:, system:, user:, model:, label:)
       run_stage.call(label) do
