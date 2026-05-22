@@ -7,7 +7,8 @@ module Commiti
     def clean_output(text)
       lines = text.to_s.strip.lines
       index = if flow_type == :pr
-                lines.index { |line| line.strip == '## Summary' }
+                headers = Commiti::TextGenerationStyle.pr_section_headers(text_generation_config)
+                lines.index { |line| headers.include?(line.strip) }
               else
                 lines.index { |line| line.match?(/\A(feat|fix|chore|refactor|docs|style|test|perf|ci|build|revert)[(!:]/i) }
               end
@@ -42,11 +43,7 @@ module Commiti
     end
 
     def pr_generation_reason(message:, diff_metadata:)
-      required_sections = [
-        '## Summary',
-        '## Motivation',
-        '## Changes Made'
-      ]
+      required_sections = Commiti::TextGenerationStyle.pr_section_headers(text_generation_config)
       missing = required_sections.reject { |section| message.include?(section) }
       return "Missing required sections: #{missing.join(', ')}" unless missing.empty?
 
@@ -65,22 +62,28 @@ module Commiti
       nil
     end
 
-    def normalize_commit_with_prefix(message, diff_metadata:)
-      errors = Commiti::InteractivePrompt.commit_message_errors(message)
-      return nil unless errors.include?(Commiti::MessageGenerator::COMMIT_PREFIX_ERROR)
+    def normalize_commit_message(message, diff_metadata:)
+      first_line = message.to_s.strip.lines.first.to_s.strip
+      return nil if first_line.empty?
 
       source_subject = cleaned_commit_subject(message)
       source_subject = Commiti::MessageGenerator::DEFAULT_COMMIT_SUBJECT if source_subject.empty?
 
-      prefix = inferred_commit_prefix(source_subject, diff_metadata: diff_metadata)
+      prefix = extracted_commit_prefix(first_line) || inferred_commit_prefix(source_subject, diff_metadata: diff_metadata)
       max_subject_length = Commiti::InteractivePrompt::COMMIT_SUBJECT_MAX_LENGTH - "#{prefix}: ".length
-      subject = source_subject[0, max_subject_length].to_s.rstrip
+      subject = Commiti::TextGenerationStyle.apply_commit_subject_case(source_subject, text_generation_config)
+      subject = subject[0, max_subject_length].to_s.rstrip
       subject = Commiti::MessageGenerator::DEFAULT_COMMIT_SUBJECT[0, max_subject_length] if subject.empty?
 
       normalized = "#{prefix}: #{subject}"
       return nil unless Commiti::InteractivePrompt.commit_message_errors(normalized).empty?
 
       normalized
+    end
+
+    def extracted_commit_prefix(first_line)
+      match = first_line.match(/\A(?<prefix>(?:feat|fix|chore|refactor|docs|style|test|perf|ci|build|revert)(?:\([^)]+\))?!?)\s*:/i)
+      match&.[](:prefix)&.downcase
     end
 
     def cleaned_commit_subject(message)
