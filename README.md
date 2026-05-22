@@ -1,5 +1,7 @@
 # Commiti
 
+[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)](coverage/index.html) [![RSpec](https://img.shields.io/badge/rspec-passing-brightgreen)](#)
+
 AI-powered commit message and pull request description generator for Git repositories, using Google AI models.
 
 ## What It Does
