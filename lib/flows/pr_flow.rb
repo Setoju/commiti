@@ -24,6 +24,13 @@ module Commiti
         origin_url = Commiti::GitWriter.origin_url
         title = Commiti::PrOpener.suggest_title(description, head_branch: head_branch)
 
+        prompt_text = 'Create PR and open it in browser now?'
+
+        unless Commiti::InteractivePrompt.ask_yes_no(prompt_text, default: :no)
+          puts "\nPR creation skipped.\n\n"
+          return
+        end
+
         api_result = run_stage('Creating PR/MR via provider API (if token configured)') do
           Commiti::PrCreator.create(
             origin_url: origin_url,
@@ -36,7 +43,6 @@ module Commiti
         end
 
         pr_url = api_result[:url]
-        using_api = !pr_url.nil?
 
         if pr_url.nil?
           case api_result[:reason]
@@ -59,14 +65,8 @@ module Commiti
           end
         end
 
-        prompt_text = using_api ? 'Open created PR page in browser now?' : 'Open prefilled PR page in browser now?'
-
-        if Commiti::InteractivePrompt.ask_yes_no(prompt_text, default: :no)
-          run_stage('Opening browser') { Commiti::PrOpener.open_in_browser(pr_url) }
-          puts "\nOpened PR page:\n#{pr_url}\n\n"
-        else
-          puts "\nPR URL:\n#{pr_url}\n\n"
-        end
+        run_stage('Opening browser') { Commiti::PrOpener.open_in_browser(pr_url) }
+        puts "\nOpened PR page:\n#{pr_url}\n\n"
       end
     end
   end
