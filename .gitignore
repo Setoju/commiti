@@ -1,3 +1,4 @@
 .env
 *.gem
 TODO.md
+coverage/*

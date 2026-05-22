@@ -29,36 +29,47 @@ RSpec.describe Commiti::Flows::PrFlow do
     allow(Commiti::PrOpener).to receive(:suggest_title).and_return('My PR')
   end
 
-  it 'uses provider API URL when token is configured and API call succeeds' do
-    allow(Commiti::PrCreator).to receive(:create).and_return({ url: 'https://github.com/acme/repo/pull/7', reason: :created })
-    expect(Commiti::PrOpener).not_to receive(:compare_url)
-    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).with('Open created PR page in browser now?', default: :no)
+  it 'skips PR creation when the user declines' do
+    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).with('Create PR and open it in browser now?', default: :no)
                                                               .and_return(false)
+    expect(Commiti::PrCreator).not_to receive(:create)
 
     flow.run
   end
 
-  it 'falls back to prefilled browser URL when provider token is missing' do
+  it 'creates and opens the API-created PR when the user accepts' do
+    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).with('Create PR and open it in browser now?', default: :no)
+                                                              .and_return(true)
+    expect(Commiti::PrCreator).to receive(:create).and_return({ url: 'https://github.com/acme/repo/pull/7', reason: :created })
+    expect(Commiti::PrOpener).not_to receive(:compare_url)
+    expect(Commiti::PrOpener).to receive(:open_in_browser).with('https://github.com/acme/repo/pull/7')
+
+    flow.run
+  end
+
+  it 'falls back to a prefilled browser URL when provider token is missing and the user accepts' do
+    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).with('Create PR and open it in browser now?', default: :no)
+                                                              .and_return(true)
     allow(Commiti::PrCreator).to receive(:create).and_return({ url: nil, reason: :missing_token, provider: :github })
     expect(Commiti::PrOpener).to receive(:compare_url).and_return('https://github.com/acme/repo/compare/main...feat-x')
-    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no)
-      .with('Open prefilled PR page in browser now?', default: :no)
-      .and_return(false)
+    expect(Commiti::PrOpener).to receive(:open_in_browser).with('https://github.com/acme/repo/compare/main...feat-x')
 
     flow.run
   end
 
-  it 'falls back to prefilled browser URL when provider is unsupported' do
+  it 'falls back to a prefilled browser URL when provider is unsupported and the user accepts' do
+    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).with('Create PR and open it in browser now?', default: :no)
+                                                              .and_return(true)
     allow(Commiti::PrCreator).to receive(:create).and_return({ url: nil, reason: :unsupported_provider })
     expect(Commiti::PrOpener).to receive(:compare_url).and_return('https://bitbucket.org/acme/repo/pull-requests/new')
-    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no)
-      .with('Open prefilled PR page in browser now?', default: :no)
-      .and_return(false)
+    expect(Commiti::PrOpener).to receive(:open_in_browser).with('https://bitbucket.org/acme/repo/pull-requests/new')
 
     flow.run
   end
 
-  it 'falls back to prefilled browser URL when provider API call fails' do
+  it 'falls back to a prefilled browser URL when provider API call fails and the user accepts' do
+    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).with('Create PR and open it in browser now?', default: :no)
+                                                              .and_return(true)
     allow(Commiti::PrCreator).to receive(:create).and_return({
                                                                url: nil,
                                                                reason: :api_error,
@@ -66,29 +77,7 @@ RSpec.describe Commiti::Flows::PrFlow do
                                                                error: 'Connection timeout'
                                                              })
     expect(Commiti::PrOpener).to receive(:compare_url).and_return('https://github.com/acme/repo/compare/main...feat-x')
-    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no)
-      .with('Open prefilled PR page in browser now?', default: :no)
-      .and_return(false)
-
-    flow.run
-  end
-
-  it 'opens browser when user accepts API-created PR URL' do
-    allow(Commiti::PrCreator).to receive(:create).and_return({ url: 'https://github.com/acme/repo/pull/7', reason: :created })
-    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).with('Open created PR page in browser now?', default: :no)
-                                                              .and_return(true)
-    expect(Commiti::PrOpener).to receive(:open_in_browser).with('https://github.com/acme/repo/pull/7')
-
-    flow.run
-  end
-
-  it 'opens browser when user accepts prefilled PR URL' do
-    allow(Commiti::PrCreator).to receive(:create).and_return({ url: nil, reason: :missing_token, provider: :github })
-    allow(Commiti::PrOpener).to receive(:compare_url).and_return('https://github.com/acme/repo/compare/main...feat-x?title=My+PR')
-    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no)
-      .with('Open prefilled PR page in browser now?', default: :no)
-      .and_return(true)
-    expect(Commiti::PrOpener).to receive(:open_in_browser).with('https://github.com/acme/repo/compare/main...feat-x?title=My+PR')
+    expect(Commiti::PrOpener).to receive(:open_in_browser).with('https://github.com/acme/repo/compare/main...feat-x')
 
     flow.run
   end
@@ -114,61 +103,66 @@ RSpec.describe Commiti::Flows::PrFlow do
     allow(Commiti::GitWriter).to receive(:current_branch).and_return('feat-x')
     allow(Commiti::GitWriter).to receive(:origin_url).and_return('git@github.com:acme/repo.git')
     allow(Commiti::PrOpener).to receive(:suggest_title).and_return('My PR')
+    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(true)
     allow(Commiti::PrCreator).to receive(:create).and_return({ url: 'https://github.com/acme/repo/pull/7', reason: :created })
-    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(false)
+    expect(Commiti::PrOpener).to receive(:open_in_browser).with('https://github.com/acme/repo/pull/7')
     expect(Commiti::GitReader).to receive(:branch_diff).with(base_branch: 'develop').and_return('diff content')
 
     flow_with_custom_base.run
   end
 
   it 'generates PR message using flow context' do
+    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(true)
     allow(Commiti::PrCreator).to receive(:create).and_return({ url: 'https://github.com/acme/repo/pull/7', reason: :created })
-    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(false)
+    allow(Commiti::PrOpener).to receive(:open_in_browser)
     expect(Commiti::FlowContextBuilder).to receive(:build).and_return(context)
 
     flow.run
   end
 
   it 'includes generated PR body in API creation call' do
-    allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(false)
+    allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(true)
     allow(flow).to receive(:select_message).and_return('My generated PR body with details')
 
     expect(Commiti::PrCreator).to receive(:create) do |args|
       expect(args[:body]).to eq('My generated PR body with details')
       { url: 'https://github.com/acme/repo/pull/7', reason: :created }
     end
+    allow(Commiti::PrOpener).to receive(:open_in_browser)
 
     flow.run
   end
 
   it 'passes title from PrOpener to API creator' do
-    allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(false)
+    allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(true)
     allow(Commiti::PrOpener).to receive(:suggest_title).and_return('Suggested Title from Description')
 
     expect(Commiti::PrCreator).to receive(:create) do |args|
       expect(args[:title]).to eq('Suggested Title from Description')
       { url: 'https://github.com/acme/repo/pull/7', reason: :created }
     end
+    allow(Commiti::PrOpener).to receive(:open_in_browser)
 
     flow.run
   end
 
   it 'passes config options to API creator' do
-    allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(false)
+    allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(true)
 
     expect(Commiti::PrCreator).to receive(:create) do |args|
       expect(args[:config]).to include(options)
       { url: 'https://github.com/acme/repo/pull/7', reason: :created }
     end
+    allow(Commiti::PrOpener).to receive(:open_in_browser)
 
     flow.run
   end
 
-  it 'does not prompt for browser when API succeeds without browser fallback' do
-    allow(Commiti::PrCreator).to receive(:create).and_return({ url: 'https://github.com/acme/repo/pull/7', reason: :created })
-    expect(Commiti::PrOpener).not_to receive(:compare_url)
-    allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(true)
-    allow(Commiti::PrOpener).to receive(:open_in_browser)
+  it 'does not create or open a PR when the user declines' do
+    expect(Commiti::InteractivePrompt).to receive(:ask_yes_no).with('Create PR and open it in browser now?', default: :no)
+                                                              .and_return(false)
+    expect(Commiti::PrCreator).not_to receive(:create)
+    expect(Commiti::PrOpener).not_to receive(:open_in_browser)
 
     flow.run
   end
