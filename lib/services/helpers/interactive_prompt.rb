@@ -52,6 +52,13 @@ module Commiti
       end
     end
 
+    def self.ask_text(question)
+      input = read_input("#{Commiti::TerminalUI.prompt(question)} ")
+      return nil if input.nil?
+
+      input.to_s.strip
+    end
+
     def self.edit_message(initial_message)
       # Keep the temp file closed while the external editor runs.
       # On Windows, open handles can prevent editors like Notepad from
