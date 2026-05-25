@@ -12,6 +12,7 @@ RSpec.describe 'Commiti CLI', :integration do
     expect(status.success?).to be(true)
     expect("#{stdout}\n#{stderr}").to include('Usage: commiti [options]')
     expect(stdout).to include('--auto-split')
+    expect(stdout).to include('--range')
   end
 
   it 'fails with clear error for invalid PR base branch name' do
