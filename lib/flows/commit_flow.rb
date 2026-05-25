@@ -75,8 +75,7 @@ module Commiti
         run_stage("Staging files for group #{index + 1}/#{total}") { Commiti::GitWriter.stage_files!(group[:files]) }
         return :continue unless run_stage('Checking staged changes') { Commiti::GitWriter.staged_changes? }
 
-        puts "\n#{Commiti::TerminalUI.header("Group #{index + 1}/#{total} files")}:"
-        group[:files].each { |path| puts "- #{path}" }
+        puts "\n#{Commiti::TerminalUI.panel("Group #{index + 1}/#{total} files", Commiti::TerminalUI.bullets(group[:files]))}\n"
 
         group_context = build_context(diff: group_diff(group), client:, model:)
         Commiti::MessagePresenter.print_summarization_notice(group_context[:summarized_result])
