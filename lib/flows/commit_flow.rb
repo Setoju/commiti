@@ -61,7 +61,12 @@ module Commiti
       end
 
       def run_grouped_context(context:, client:, model:)
-        groups = context[:change_groups]
+        groups = Commiti::GroupEditor.edit(context[:change_groups])
+        if groups.length <= 1
+          single_context = groups.first ? build_context(diff: group_diff(groups.first), client:, model:) : context
+          return run_single_group_context(context: single_context, client:, model:)
+        end
+
         run_stage('Unstaging current index for grouped commit execution') { Commiti::GitWriter.unstage_all! }
 
         puts "\n#{Commiti::TerminalUI.status(:info, "Auto-split detected #{groups.length} connected change groups.")}"

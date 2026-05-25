@@ -18,6 +18,12 @@ module Commiti
       end
     end
 
+    def self.related?(left, right)
+      return false if left.to_s.strip.empty? || right.to_s.strip.empty?
+
+      connected?(left, right)
+    end
+
     def self.connected_components(paths)
       visited = {}
       ordered_components = []

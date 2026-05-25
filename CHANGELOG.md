@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.3.3] - 2026-05-25
+
+### Added
+- Added commit group editing
+- Improved cli styling
+
 ## [1.3.2] - 2026-05-21
 
 ### Docs

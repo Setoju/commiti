@@ -16,6 +16,7 @@ RSpec.describe Commiti::Flows::CommitFlow do
     allow(flow).to receive(:select_message).and_return('feat: grouped change')
     allow(flow).to receive(:generate_candidates).and_return(['feat: grouped change'])
     allow(Commiti::MessagePresenter).to receive(:print_summarization_notice)
+    allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(false)
   end
 
   it 'falls back to single commit path when grouping yields one group' do
