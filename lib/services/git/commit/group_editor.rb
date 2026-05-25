@@ -2,7 +2,7 @@
 
 module Commiti
   module GroupEditor
-    HELP_TEXT = <<~TEXT.freeze
+    HELP_TEXT = <<~TEXT
       Select files by number, then choose where to move them.
 
       Examples:
@@ -127,7 +127,7 @@ module Commiti
       end
 
       indices = indices.uniq
-      valid = indices.select { |value| value.between?(1, max_index) }
+      valid = indices.grep(1..max_index)
       (indices - valid).each do |value|
         puts Commiti::TerminalUI.status(:warn, "File number #{value} is out of range.")
       end
@@ -219,7 +219,7 @@ module Commiti
 
     def self.build_chunk_map(groups)
       groups.flat_map { |group| group[:chunks] }
-            .each_with_object({}) { |chunk, acc| acc[chunk[:path]] = chunk }
+            .to_h { |chunk| [chunk[:path], chunk] }
     end
     private_class_method :build_chunk_map
 
