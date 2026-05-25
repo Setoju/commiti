@@ -27,7 +27,7 @@ module Commiti
         prompt_text = 'Create PR and open it in browser now?'
 
         unless Commiti::InteractivePrompt.ask_yes_no(prompt_text, default: :no)
-          puts "\nPR creation skipped.\n\n"
+          puts "\n#{Commiti::TerminalUI.status(:warn, 'PR creation skipped.')}\n\n"
           return
         end
 
@@ -66,7 +66,7 @@ module Commiti
         end
 
         run_stage('Opening browser') { Commiti::PrOpener.open_in_browser(pr_url) }
-        puts "\nOpened PR page:\n#{pr_url}\n\n"
+        puts "\n#{Commiti::TerminalUI.panel('Opened PR page', pr_url)}\n\n"
       end
     end
   end
