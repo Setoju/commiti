@@ -18,7 +18,7 @@ module Commiti
 
     def generate_candidates(client:, prompt:, diff_metadata:, count:, model:)
       (1..count).map do |index|
-        puts "\nGenerating candidate #{index}/#{count}..."
+        puts "\n#{Commiti::TerminalUI.status(:info, "Generating candidate #{index}/#{count}...")}"
         generate_with_quality_check(client: client, prompt: prompt, diff_metadata: diff_metadata, model: model)
       end
     end
@@ -35,8 +35,8 @@ module Commiti
       return normalize_commit_message(message, diff_metadata: diff_metadata) if reason.nil? && flow_type == :commit
       return message if reason.nil?
 
-      puts "\nGenerated output looked weak: #{reason}"
-      puts "Retrying once with stronger constraints...\n"
+      puts "\n#{Commiti::TerminalUI.status(:warn, "Generated output looked weak: #{reason}")}"
+      puts "#{Commiti::TerminalUI.status(:info, 'Retrying once with stronger constraints...')}\n"
 
       retried_message = clean_output(generate_from_client(
                                        client: client,
