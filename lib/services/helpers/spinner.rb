@@ -16,7 +16,8 @@ module Commiti
         index = 0
         until done
           frame = Commiti::TerminalUI.color(FRAMES[index % FRAMES.length], :cyan)
-          print "\r#{frame} #{message}"
+          line = "#{frame} #{message}"
+          print "\r#{Commiti::TerminalUI.pad_right(line, Commiti::TerminalUI.width)}"
           $stdout.flush
           index += 1
           sleep INTERVAL_SECONDS
@@ -31,7 +32,8 @@ module Commiti
         done = true
         spinner_thread.join
 
-        print "\r#{final_status_line(error, message)}\n"
+        final_line = final_status_line(error, message)
+        print "\r#{Commiti::TerminalUI.pad_right(final_line, Commiti::TerminalUI.width)}\n"
         $stdout.flush
       end
 
