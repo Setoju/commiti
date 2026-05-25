@@ -35,6 +35,34 @@ module Commiti
       out
     end
 
+    LOG_RECORD_SEPARATOR = "\x1e"
+    LOG_FIELD_SEPARATOR = "\x1f"
+
+    def self.commits_in_range(range:)
+      raise 'Invalid changelog range.' unless valid_range?(range)
+
+      format = ['%H', '%s', '%b'].join(LOG_FIELD_SEPARATOR) + LOG_RECORD_SEPARATOR
+      out, err, status = Open3.capture3('git', 'log', '--no-color', "--pretty=format:#{format}", range.to_s)
+      raise "Failed to read git log for range '#{range}': #{err.strip.empty? ? out.strip : err.strip}" unless status.success?
+      return [] if out.to_s.strip.empty?
+
+      out.split(LOG_RECORD_SEPARATOR).filter_map do |record|
+        next if record.strip.empty?
+
+        sha, subject, body = record.split(LOG_FIELD_SEPARATOR, 3)
+        {
+          sha: sha.to_s.strip,
+          subject: subject.to_s.strip,
+          body: body.to_s
+        }
+      end
+    end
+
+    def self.valid_range?(range)
+      range.to_s.match?(%r{\A[a-zA-Z0-9_\-./]+(\.\.\.?[a-zA-Z0-9_\-./]+)\z})
+    end
+    private_class_method :valid_range?
+
     def self.clip_diff_context(diff, max_bytes:)
       return diff if diff.bytesize <= max_bytes
 

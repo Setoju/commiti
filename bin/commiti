@@ -18,7 +18,8 @@ OptionParser.new do |opts|
 
   BANNER
 
-  opts.on('--type TYPE', %i[commit pr], 'Message type: commit or pr (default: commit)') do |t|
+  opts.on('--type TYPE', %i[commit pr changelog],
+          'Message type: commit, pr, or changelog (default: commit)') do |t|
     options[:type] = t
   end
 
@@ -40,6 +41,10 @@ OptionParser.new do |opts|
     options[:auto_split] = true
   end
 
+  opts.on('--range RANGE', 'Git revision range for changelog (e.g. v1.2.0..HEAD)') do |range|
+    options[:range] = range
+  end
+
   opts.on('-h', '--help', 'Show this help') do
     puts opts
     exit
@@ -48,13 +53,22 @@ end.parse!
 
 begin
   model_label = ENV.fetch('COMMITI_MODEL', Commiti::GoogleClient::DEFAULT_MODEL)
-  flow_label = options[:type] == :pr ? 'PR flow' : 'Commit flow'
+  flow_label = case options[:type]
+               when :pr then 'PR flow'
+               when :changelog then 'Changelog flow'
+               else 'Commit flow'
+               end
   base_label = options[:type] == :pr ? "Base: #{options[:base_branch] || 'main'}" : nil
-  meta = [flow_label, "Model: #{model_label}", base_label].compact.join(' • ')
+  range_label = options[:type] == :changelog ? "Range: #{options[:range] || 'unset'}" : nil
+  model_meta = options[:type] == :changelog ? nil : "Model: #{model_label}"
+  meta = [flow_label, model_meta, base_label, range_label].compact.join(' • ')
   puts Commiti::TerminalUI.banner(title: 'Commiti', subtitle: 'AI commit & PR generator', meta: meta)
 
-  flow = if options[:type] == :pr
+  flow = case options[:type]
+         when :pr
            Commiti::Flows::PrFlow.new(options: options)
+         when :changelog
+           Commiti::Flows::ChangelogFlow.new(options: options)
          else
            Commiti::Flows::CommitFlow.new(options: options)
          end

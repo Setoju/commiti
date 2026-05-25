@@ -90,8 +90,9 @@ Never commit `.env` to git.
 
 ### Options
 
-- `--type TYPE` where `TYPE` is `commit` or `pr` (default: `commit`)
+- `--type TYPE` where `TYPE` is `commit`, `pr`, or `changelog` (default: `commit`)
 - `--base BRANCH` base branch for PR diff (default: `main`)
+- `--range RANGE` git revision range for changelog (example: `v1.2.0..HEAD`)
 - `--no-copy` print output only, skip clipboard copy
 - `--candidates N` generate `N` output candidates (`1`-`5`, default: `1`)
 - `--auto-split` auto-group staged changes into multiple connected commits (commit flow only)
@@ -149,6 +150,12 @@ Commit edit mode uses:
      - Opens browser with prefilled PR/MR form using query parameters.
      - If the URL would exceed safe browser/provider limits (~1800 characters), Commiti keeps the title and intelligently truncates the description to the longest text that still fits.
 4. Asks before opening browser.
+
+## Changelog Flow (`--type changelog`)
+
+1. Reads commits for the provided git range (for example `v1.2.0..HEAD`).
+2. Groups commits by conventional commit type into readable sections.
+3. Prints a Markdown changelog with short commit hashes.
 
 Commiti can create PRs/MRs via provider APIs when tokens are configured, and always opens the resulting page in your browser.
 
@@ -224,6 +231,12 @@ Print only, do not copy to clipboard:
 
 ```bash
 bundle exec ruby -Ilib bin/commiti --type pr --no-copy
+```
+
+Generate a changelog from a tag range:
+
+```bash
+bundle exec ruby -Ilib bin/commiti --type changelog --range v1.2.0..HEAD
 ```
 
 ## Implementation Overview
