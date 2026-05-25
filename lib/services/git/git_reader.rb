@@ -41,7 +41,7 @@ module Commiti
     def self.commits_in_range(range:)
       raise 'Invalid changelog range.' unless valid_range?(range)
 
-      format = ["%H", "%s", "%b"].join(LOG_FIELD_SEPARATOR) + LOG_RECORD_SEPARATOR
+      format = ['%H', '%s', '%b'].join(LOG_FIELD_SEPARATOR) + LOG_RECORD_SEPARATOR
       out, err, status = Open3.capture3('git', 'log', '--no-color', "--pretty=format:#{format}", range.to_s)
       raise "Failed to read git log for range '#{range}': #{err.strip.empty? ? out.strip : err.strip}" unless status.success?
       return [] if out.to_s.strip.empty?

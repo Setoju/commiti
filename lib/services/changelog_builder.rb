@@ -16,7 +16,7 @@ module Commiti
       'revert' => 'Reverts'
     }.freeze
 
-    TYPE_PATTERN = /\A(?<type>[a-zA-Z]+)(?<scope>\([^)]+\))?(?<breaking>!)?:\s+(?<subject>.+)\z/.freeze
+    TYPE_PATTERN = /\A(?<type>[a-zA-Z]+)(?<scope>\([^)]+\))?(?<breaking>!)?:\s+(?<subject>.+)\z/
 
     def self.build(commits, range:)
       groups = Hash.new { |hash, key| hash[key] = [] }
