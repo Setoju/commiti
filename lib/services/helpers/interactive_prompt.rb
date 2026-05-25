@@ -12,7 +12,7 @@ module Commiti
 
     def self.ask_yes_no(question, default: :no)
       suffix = default == :yes ? '[Y/n]' : '[y/N]'
-      input = read_input("#{question} #{suffix} ")
+      input = read_input("#{Commiti::TerminalUI.prompt(question)} #{Commiti::TerminalUI.muted(suffix)} ")
       return default == :yes ? :yes : nil if input.nil?
 
       value = input.strip.downcase
@@ -24,7 +24,7 @@ module Commiti
     end
 
     def self.ask_commit_action
-      input = read_input('Commit with this message? [y/e/N] ')
+      input = read_input("#{Commiti::TerminalUI.prompt('Commit with this message?')} #{Commiti::TerminalUI.muted('[y/e/N]')} ")
       return :no if input.nil?
 
       value = input.strip.downcase
@@ -38,14 +38,17 @@ module Commiti
       return 0 if count <= 1
 
       loop do
-        input = read_input("Select candidate [1-#{count}] (default: #{default}): ")
+        input = read_input(
+          "#{Commiti::TerminalUI.prompt('Select candidate')} " \
+          "#{Commiti::TerminalUI.muted("[1-#{count}] (default: #{default})")}: "
+        )
         return default - 1 if input.nil?
 
         value = input.strip
         return default - 1 if value.empty?
         return value.to_i - 1 if value.match?(/\A\d+\z/) && value.to_i.between?(1, count)
 
-        puts "Please type a number between 1 and #{count}."
+        puts Commiti::TerminalUI.status(:warn, "Please type a number between 1 and #{count}.")
       end
     end
 

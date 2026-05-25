@@ -14,8 +14,9 @@ RSpec.describe Commiti::TerminalUI do
   describe '.status' do
     it 'returns plain text without ansi colors when ansi is unsupported' do
       allow(described_class).to receive(:supports_ansi?).and_return(false)
+      allow(described_class).to receive(:supports_unicode?).and_return(true)
 
-      expect(described_class.status(:success, 'Done')).to eq('✅ Done')
+      expect(described_class.status(:success, 'Done')).to eq('✔ Done')
     end
   end
 end

@@ -47,6 +47,12 @@ OptionParser.new do |opts|
 end.parse!
 
 begin
+  model_label = ENV.fetch('COMMITI_MODEL', Commiti::GoogleClient::DEFAULT_MODEL)
+  flow_label = options[:type] == :pr ? 'PR flow' : 'Commit flow'
+  base_label = options[:type] == :pr ? "Base: #{options[:base_branch] || 'main'}" : nil
+  meta = [flow_label, "Model: #{model_label}", base_label].compact.join(' • ')
+  puts Commiti::TerminalUI.banner(title: 'Commiti', subtitle: 'AI commit & PR generator', meta: meta)
+
   flow = if options[:type] == :pr
            Commiti::Flows::PrFlow.new(options: options)
          else

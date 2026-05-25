@@ -11,7 +11,7 @@ module Commiti
       status = run_stage.call('Reading git status') { Commiti::GitWriter.status_short }
       raise 'No changes found in working tree.' if status.strip.empty?
 
-      puts "\n#{Commiti::TerminalUI.header('Current git status')}\n\n#{status}"
+      puts "\n#{Commiti::TerminalUI.panel('Current git status', status)}\n"
       return unless Commiti::InteractivePrompt.ask_yes_no('Run git add -A now?', default: :no)
 
       run_stage.call('Staging changes (git add -A)') { Commiti::GitWriter.stage_all! }

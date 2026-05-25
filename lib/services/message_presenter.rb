@@ -35,18 +35,13 @@ module Commiti
       end
     end
 
-    def self.print_message(message)
-      puts "\n#{Commiti::TerminalUI.separator}"
-      puts Commiti::TerminalUI.header('Generated output')
-      puts Commiti::TerminalUI.separator
-      puts message
-      puts "#{Commiti::TerminalUI.separator}\n"
+    def self.print_message(message, title: 'Generated output')
+      puts "\n#{Commiti::TerminalUI.panel(title, message)}\n"
     end
 
     def self.print_candidates(candidates)
       candidates.each_with_index do |candidate, index|
-        puts "\n#{Commiti::TerminalUI.header("Candidate #{index + 1}")}"
-        print_message(candidate)
+        print_message(candidate, title: "Candidate #{index + 1}")
       end
     end
     private_class_method :print_candidates
