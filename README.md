@@ -102,6 +102,8 @@ Never commit `.env` to git.
 By default, Commiti creates a single commit from staged changes.
 Use `--auto-split` to let Commiti group connected file changes into multiple atomic commits.
 
+When auto-split detects multiple groups, Commiti can optionally open a quick group editor so you can move files between groups before committing.
+
 1. Shows `git status --short`.
 2. Asks for confirmation before staging (`git add -A`).
 3. Ensures there are staged changes.
