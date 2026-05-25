@@ -39,7 +39,7 @@ module Commiti
       return commit_message(working_message, run_stage: run_stage) if errors.empty?
 
       puts "\n#{Commiti::TerminalUI.status(:warn, 'Current message needs fixes before commit:')}"
-      errors.each { |error| puts "- #{error}" }
+      errors.each { |error| puts Commiti::TerminalUI.bullet(error) }
 
       unless Commiti::InteractivePrompt.ask_yes_no('Open editor to fix now?', default: :yes)
         print_skip_message
@@ -88,7 +88,7 @@ module Commiti
         return edited if errors.empty?
 
         puts "\n#{Commiti::TerminalUI.status(:warn, 'Edited message needs fixes:')}"
-        errors.each { |error| puts "- #{error}" }
+        errors.each { |error| puts Commiti::TerminalUI.bullet(error) }
         return edited unless Commiti::InteractivePrompt.ask_yes_no('Re-open editor now?', default: :yes)
 
         working = edited
