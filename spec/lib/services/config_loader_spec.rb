@@ -122,6 +122,121 @@ RSpec.describe Commiti::ConfigLoader do
     end
   end
 
+  describe '.load with YAML behavior config' do
+    let(:env) { {} }
+
+    it 'reads model and candidates from a project config file' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, <<~YAML)
+          model: gemini-2.5-flash
+          candidates: 3
+          no_copy: true
+          auto_split: true
+          diff_summary_workers: 6
+          git:
+            base_branch: develop
+        YAML
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:model]).to eq('gemini-2.5-flash')
+        expect(config[:candidates]).to eq(3)
+        expect(config[:no_copy]).to be(true)
+        expect(config[:auto_split]).to be(true)
+        expect(config[:diff_summary_workers]).to eq(6)
+        expect(config[:base_branch]).to eq('develop')
+      end
+    end
+
+    it 'env vars override YAML behavior flags' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, "model: gemini-2.5-flash\ncandidates: 3\n")
+
+        config = described_class.load(
+          env: { 'COMMITI_CONFIG' => config_path, 'COMMITI_MODEL' => 'gemma-4-31b-it', 'COMMITI_CANDIDATES' => '1' },
+          cwd: dir
+        )
+
+        expect(config[:model]).to eq('gemma-4-31b-it')
+        expect(config[:candidates]).to eq(1)
+      end
+    end
+
+    it 'absent env vars do not overwrite YAML values' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, "model: gemini-2.5-flash\n")
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:model]).to eq('gemini-2.5-flash')
+      end
+    end
+
+    it 'global config provides defaults that project config overrides' do
+      Dir.mktmpdir do |global_dir|
+        Dir.mktmpdir do |project_dir|
+          global_path = File.join(global_dir, '.commiti.yml')
+          project_path = File.join(project_dir, '.commiti.yml')
+
+          File.write(global_path, "model: gemini-2.5-flash\ncandidates: 2\n")
+          File.write(project_path, "candidates: 5\n")
+
+          allow(described_class).to receive(:global_config_path).and_return(global_path)
+
+          config = described_class.load(env: { 'COMMITI_CONFIG' => project_path }, cwd: project_dir)
+
+          expect(config[:model]).to eq('gemini-2.5-flash')
+          expect(config[:candidates]).to eq(5)
+        end
+      end
+    end
+
+    it 'project text_generation overrides global without wiping other global text_generation keys' do
+      Dir.mktmpdir do |global_dir|
+        Dir.mktmpdir do |project_dir|
+          global_path = File.join(global_dir, '.commiti.yml')
+          project_path = File.join(project_dir, '.commiti.yml')
+
+          File.write(global_path, <<~YAML)
+            text_generation:
+              commit:
+                subject_case: lowercase
+              pr:
+                sections:
+                  - name: Global Section
+                    guidance: Global guidance.
+          YAML
+          File.write(project_path, <<~YAML)
+            text_generation:
+              commit:
+                subject_case: uppercase
+          YAML
+
+          allow(described_class).to receive(:global_config_path).and_return(global_path)
+
+          config = described_class.load(env: { 'COMMITI_CONFIG' => project_path }, cwd: project_dir)
+
+          expect(config[:text_generation][:commit][:subject_case]).to eq('uppercase')
+          expect(config[:text_generation][:pr][:sections].first[:name]).to eq('Global Section')
+        end
+      end
+    end
+
+    it 'does not read API key secrets from YAML' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, "google_api_key: should-be-ignored\n")
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:google_api_key]).to be_nil
+      end
+    end
+  end
+
   describe '.deep_merge (private)' do
     it 'overrides scalar values from the override hash' do
       base = { model: 'gemma', candidates: 1 }

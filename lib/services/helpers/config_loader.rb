@@ -17,6 +17,7 @@ module Commiti
       base_branch: 'main',
       no_copy: false,
       auto_split: false,
+      diff_summary_workers: 4,
       temperature: Commiti::GoogleClient::DEFAULT_TEMPERATURE,
       timeout_seconds: Commiti::GoogleClient::DEFAULT_TIMEOUT_SECONDS,
       open_timeout_seconds: Commiti::GoogleClient::DEFAULT_OPEN_TIMEOUT_SECONDS,
@@ -26,30 +27,21 @@ module Commiti
     # Loads configuration from environment variables.
     # Keys are returned as symbols with parsed values.
     def self.load(env: ENV, cwd: Dir.pwd)
-      DEFAULT_CONFIG.merge(
-        google_api_key: google_api_key_from_env(env),
-        github_token: present_or_nil(env.fetch('COMMITI_GITHUB_TOKEN', nil)),
-        gitlab_token: present_or_nil(env.fetch('COMMITI_GITLAB_TOKEN', nil)),
-        gitbucket_token: present_or_nil(env.fetch('COMMITI_GITBUCKET_TOKEN', nil)),
-        model: present_or_default(env.fetch('COMMITI_MODEL', nil), DEFAULT_CONFIG[:model]),
-        candidates: integer_or_default(env.fetch('COMMITI_CANDIDATES', nil), DEFAULT_CONFIG[:candidates]),
-        base_branch: present_or_default(env.fetch('COMMITI_BASE_BRANCH', nil), DEFAULT_CONFIG[:base_branch]),
-        no_copy: boolean_or_default(env.fetch('COMMITI_NO_COPY', nil), DEFAULT_CONFIG[:no_copy]),
-        auto_split: boolean_or_default(env.fetch('COMMITI_AUTO_SPLIT', nil), DEFAULT_CONFIG[:auto_split]),
-        temperature: float_or_default(env.fetch('COMMITI_MODEL_TEMPERATURE', nil), DEFAULT_CONFIG[:temperature]),
-        timeout_seconds: integer_or_default(env.fetch('COMMITI_MODEL_TIMEOUT_SECONDS', nil), DEFAULT_CONFIG[:timeout_seconds]),
-        open_timeout_seconds: integer_or_default(env.fetch('COMMITI_MODEL_OPEN_TIMEOUT_SECONDS', nil),
-                                                 DEFAULT_CONFIG[:open_timeout_seconds]),
-        text_generation: load_text_generation_config(env: env, cwd: cwd)
-      )
-    end
+      global_raw = load_global_yaml
+      project_raw = read_yaml_config(configured_path(env: env, cwd: cwd))
+      merged_raw = deep_merge(global_raw, project_raw)
 
-    def self.load_text_generation_config(env:, cwd:)
-      config_path = configured_path(env: env, cwd: cwd)
-      project_config = read_yaml_config(config_path)
-      Commiti::TextGenerationStyle.normalize(project_config)
+      DEFAULT_CONFIG
+        .merge(yaml_behavior_config(merged_raw))
+        .merge(
+          google_api_key: google_api_key_from_env(env),
+          github_token: present_or_nil(env.fetch('COMMITI_GITHUB_TOKEN', nil)),
+          gitlab_token: present_or_nil(env.fetch('COMMITI_GITLAB_TOKEN', nil)),
+          gitbucket_token: present_or_nil(env.fetch('COMMITI_GITBUCKET_TOKEN', nil)),
+          text_generation: Commiti::TextGenerationStyle.normalize(merged_raw)
+        )
+        .merge(env_behavior_overrides(env))
     end
-    private_class_method :load_text_generation_config
 
     def self.configured_path(env:, cwd:)
       configured = present_or_nil(env.fetch('COMMITI_CONFIG', nil))
@@ -107,33 +99,94 @@ module Commiti
     end
     private_class_method :present_or_default
 
-    def self.integer_or_default(value, fallback)
-      return fallback if value.nil? || value.to_s.strip.empty?
+    def self.yaml_behavior_config(merged)
+      git = lookup_key(merged, 'git') || {}
+      {}.tap do |result|
+        model = present_or_nil(lookup_key(merged, 'model').to_s)
+        result[:model] = model if model
 
+        candidates = safe_integer(lookup_key(merged, 'candidates'))
+        result[:candidates] = candidates unless candidates.nil?
+
+        base_branch = present_or_nil(lookup_key(git, 'base_branch').to_s)
+        result[:base_branch] = base_branch if base_branch
+
+        no_copy = as_boolean(lookup_key(merged, 'no_copy'))
+        result[:no_copy] = no_copy unless no_copy.nil?
+
+        auto_split = as_boolean(lookup_key(merged, 'auto_split'))
+        result[:auto_split] = auto_split unless auto_split.nil?
+
+        workers = safe_integer(lookup_key(merged, 'diff_summary_workers'))
+        result[:diff_summary_workers] = workers unless workers.nil?
+      end
+    end
+    private_class_method :yaml_behavior_config
+
+    def self.env_behavior_overrides(env)
+      {}.tap do |result|
+        model = present_or_nil(env.fetch('COMMITI_MODEL', nil))
+        result[:model] = model if model
+
+        candidates = safe_integer(env.fetch('COMMITI_CANDIDATES', nil))
+        result[:candidates] = candidates unless candidates.nil?
+
+        base_branch = present_or_nil(env.fetch('COMMITI_BASE_BRANCH', nil))
+        result[:base_branch] = base_branch if base_branch
+
+        no_copy = safe_boolean_from_string(env.fetch('COMMITI_NO_COPY', nil))
+        result[:no_copy] = no_copy unless no_copy.nil?
+
+        auto_split = safe_boolean_from_string(env.fetch('COMMITI_AUTO_SPLIT', nil))
+        result[:auto_split] = auto_split unless auto_split.nil?
+
+        temperature = safe_float(env.fetch('COMMITI_MODEL_TEMPERATURE', nil))
+        result[:temperature] = temperature unless temperature.nil?
+
+        timeout = safe_integer(env.fetch('COMMITI_MODEL_TIMEOUT_SECONDS', nil))
+        result[:timeout_seconds] = timeout unless timeout.nil?
+
+        open_timeout = safe_integer(env.fetch('COMMITI_MODEL_OPEN_TIMEOUT_SECONDS', nil))
+        result[:open_timeout_seconds] = open_timeout unless open_timeout.nil?
+      end
+    end
+    private_class_method :env_behavior_overrides
+
+    def self.lookup_key(hash, key)
+      return nil unless hash.is_a?(Hash)
+      hash[key] || hash[key.to_sym]
+    end
+    private_class_method :lookup_key
+
+    def self.as_boolean(value)
+      return value if value == true || value == false
+      nil
+    end
+    private_class_method :as_boolean
+
+    def self.safe_integer(value)
+      return nil if value.nil? || value.to_s.strip.empty?
       Integer(value)
-    rescue ArgumentError
-      fallback
+    rescue ArgumentError, TypeError
+      nil
     end
-    private_class_method :integer_or_default
+    private_class_method :safe_integer
 
-    def self.float_or_default(value, fallback)
-      return fallback if value.nil? || value.to_s.strip.empty?
-
+    def self.safe_float(value)
+      return nil if value.nil? || value.to_s.strip.empty?
       Float(value)
-    rescue ArgumentError
-      fallback
+    rescue ArgumentError, TypeError
+      nil
     end
-    private_class_method :float_or_default
+    private_class_method :safe_float
 
-    def self.boolean_or_default(value, fallback)
-      return fallback if value.nil? || value.to_s.strip.empty?
-
+    def self.safe_boolean_from_string(value)
+      return nil if value.nil? || value.to_s.strip.empty?
       normalized = value.to_s.strip.downcase
       return true if %w[1 true yes on].include?(normalized)
       return false if %w[0 false no off].include?(normalized)
-
-      fallback
+      nil
     end
-    private_class_method :boolean_or_default
+    private_class_method :safe_boolean_from_string
   end
 end
