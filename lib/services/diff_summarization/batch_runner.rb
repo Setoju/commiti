@@ -134,10 +134,7 @@ module Commiti
       end
 
       def summary_worker_count(job_count, configured_count: nil)
-        count = configured_count || Integer(ENV.fetch('DIFF_SUMMARY_WORKERS', DEFAULT_SUMMARY_WORKERS))
-        count.clamp(1, job_count)
-      rescue ArgumentError
-        DEFAULT_SUMMARY_WORKERS.clamp(1, job_count)
+        (configured_count || DEFAULT_SUMMARY_WORKERS).clamp(1, job_count)
       end
 
       def format_chunk_summary(path:, summary:)

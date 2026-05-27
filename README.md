@@ -234,6 +234,8 @@ When a diff exceeds internal size limits, Commiti clips and summarizes using fil
 
 This improves semantic quality for AI generation compared with naive truncation.
 
+You can tune summarization worker concurrency with `COMMITI_DIFF_SUMMARY_WORKERS` (or the `diff_summary_workers` key in `.commiti.yml`).
+
 ## Examples
 
 Generate commit message and commit interactively:
@@ -315,4 +317,3 @@ The CLI reports user-friendly errors for common cases such as:
 
 - The default model is `gemma-4-31b-it` in `GoogleClient`.
 - PR browser URL body payloads are URL-encoded with `URI.encode_www_form`.
-- You can tune summarization worker concurrency with `DIFF_SUMMARY_WORKERS`.

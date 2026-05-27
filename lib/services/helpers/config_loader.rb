@@ -143,6 +143,9 @@ module Commiti
 
         open_timeout = safe_integer(env.fetch('COMMITI_MODEL_OPEN_TIMEOUT_SECONDS', nil))
         result[:open_timeout_seconds] = open_timeout unless open_timeout.nil?
+
+        workers = safe_integer(env.fetch('COMMITI_DIFF_SUMMARY_WORKERS', nil))
+        result[:diff_summary_workers] = workers unless workers.nil?
       end
     end
     private_class_method :env_behavior_overrides

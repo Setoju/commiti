@@ -247,6 +247,20 @@ RSpec.describe Commiti::ConfigLoader do
         expect(config[:auto_split]).to be(false)
       end
     end
+
+    it 'COMMITI_DIFF_SUMMARY_WORKERS env var overrides YAML diff_summary_workers' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, "diff_summary_workers: 6\n")
+
+        config = described_class.load(
+          env: { 'COMMITI_CONFIG' => config_path, 'COMMITI_DIFF_SUMMARY_WORKERS' => '2' },
+          cwd: dir
+        )
+
+        expect(config[:diff_summary_workers]).to eq(2)
+      end
+    end
   end
 
   describe '.deep_merge (private)' do
