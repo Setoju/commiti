@@ -19,7 +19,8 @@ module Commiti
           client: client,
           run_stage: method(:run_stage),
           model: selected_model,
-          text_generation_config: options[:text_generation]
+          text_generation_config: options[:text_generation],
+          worker_count: options[:diff_summary_workers]
         )
         Commiti::MessagePresenter.print_summarization_notice(context[:summarized_result])
 

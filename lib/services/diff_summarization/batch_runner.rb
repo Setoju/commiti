@@ -3,7 +3,7 @@
 module Commiti
   module DiffSummarizer
     module BatchRunner
-      def summarize_chunks(chunks, client:, model:)
+      def summarize_chunks(chunks, client:, model:, worker_count: nil)
         results = Array.new(chunks.length)
         large_jobs = []
 
@@ -16,18 +16,18 @@ module Commiti
         end
 
         batched_jobs = build_batch_jobs(large_jobs)
-        run_async_summary_jobs(batched_jobs, results: results, client: client, model: model) unless batched_jobs.empty?
+        run_async_summary_jobs(batched_jobs, results: results, client: client, model: model, worker_count: worker_count) unless batched_jobs.empty?
         results
       end
 
-      def run_async_summary_jobs(jobs, results:, client:, model:)
+      def run_async_summary_jobs(jobs, results:, client:, model:, worker_count: nil)
         queue = Queue.new
         jobs.each { |job| queue << job }
 
-        worker_count = summary_worker_count(jobs.length)
+        worker_count_actual = summary_worker_count(jobs.length, configured_count: worker_count)
         captured_errors = Queue.new
 
-        workers = Array.new(worker_count) do
+        workers = Array.new(worker_count_actual) do
           Thread.new do
             loop do
               job = queue.pop(true)
@@ -133,9 +133,9 @@ module Commiti
         parsed
       end
 
-      def summary_worker_count(job_count)
-        configured = Integer(ENV.fetch('DIFF_SUMMARY_WORKERS', DEFAULT_SUMMARY_WORKERS))
-        configured.clamp(1, job_count)
+      def summary_worker_count(job_count, configured_count: nil)
+        count = configured_count || Integer(ENV.fetch('DIFF_SUMMARY_WORKERS', DEFAULT_SUMMARY_WORKERS))
+        count.clamp(1, job_count)
       rescue ArgumentError
         DEFAULT_SUMMARY_WORKERS.clamp(1, job_count)
       end

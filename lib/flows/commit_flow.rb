@@ -101,7 +101,8 @@ module Commiti
           diff: diff,
           client: client,
           run_stage: method(:run_stage),
-          model: model
+          model: model,
+          worker_count: options[:diff_summary_workers]
         )
       end
 

@@ -2,7 +2,7 @@
 
 module Commiti
   module FlowContextBuilder
-    def self.build(flow_type:, diff:, client:, run_stage:, model:, text_generation_config: nil)
+    def self.build(flow_type:, diff:, client:, run_stage:, model:, text_generation_config: nil, worker_count: nil)
       line_chunks = Commiti::DiffParser.split_by_file_lines(diff)
       diff_metadata = Commiti::DiffParser.metadata_from_line_chunks(line_chunks)
       change_groups = Commiti::ChangeGrouping.group(line_chunks)
@@ -12,7 +12,8 @@ module Commiti
           diff,
           client: client,
           model: model,
-          chunks: summary_chunks(line_chunks)
+          chunks: summary_chunks(line_chunks),
+          worker_count: worker_count
         )
       end
 

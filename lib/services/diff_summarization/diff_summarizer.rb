@@ -54,14 +54,14 @@ module Commiti
 
     # Returns:
     # { content: String, summarized: Boolean, fallback_reason: String|nil }
-    def self.summarize_if_needed(diff, client:, model: Commiti::GoogleClient::DEFAULT_MODEL, chunks: nil)
+    def self.summarize_if_needed(diff, client:, model: Commiti::GoogleClient::DEFAULT_MODEL, chunks: nil, worker_count: nil)
       parsed_chunks = chunks
       return { content: diff, summarized: false, fallback_reason: nil } if diff.bytesize <= THRESHOLD
 
       parsed_chunks ||= Commiti::DiffParser.split_by_file(diff)
       return { content: diff[0, FALLBACK_BYTES], summarized: false, fallback_reason: nil } if parsed_chunks.empty?
 
-      per_file_summaries = summarize_chunks(parsed_chunks, client: client, model: model)
+      per_file_summaries = summarize_chunks(parsed_chunks, client: client, model: model, worker_count: worker_count)
       combined = combine(per_file_summaries, client: client, model: model)
 
       { content: combined, summarized: true, fallback_reason: nil }

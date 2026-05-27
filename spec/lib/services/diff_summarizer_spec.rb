@@ -6,14 +6,30 @@ RSpec.describe Commiti::DiffSummarizer do
   let(:small_diff) { "diff --git a/a.rb b/a.rb\n@@ -1 +1 @@\n-old\n+new\n" }
 
   describe '.summarize_if_needed' do
+    let(:client) { instance_double('client') }
+
     it 'returns original content when diff is under threshold' do
-      client = instance_double('client')
 
       result = described_class.summarize_if_needed(small_diff, client: client)
 
       expect(result[:summarized]).to be(false)
       expect(result[:content]).to eq(small_diff)
       expect(result[:fallback_reason]).to be_nil
+    end
+
+    it 'passes worker_count through to summarize_chunks' do
+      large_diff = "diff --git a/foo.rb b/foo.rb\n" + ("+" * 9000)
+      allow(Commiti::DiffParser).to receive(:split_by_file).and_return(
+        [{ path: 'foo.rb', diff: large_diff }]
+      )
+      expect(Commiti::DiffSummarizer).to receive(:summarize_chunks).with(
+        anything,
+        hash_including(worker_count: 2)
+      ).and_call_original
+
+      allow(client).to receive(:generate).and_return('summary')
+
+      Commiti::DiffSummarizer.summarize_if_needed(large_diff, client: client, model: 'gemma', worker_count: 2)
     end
 
     it 'returns deterministic fallback when summarization times out' do
@@ -29,7 +45,7 @@ RSpec.describe Commiti::DiffSummarizer do
 
       result = described_class.summarize_if_needed(
         big_diff,
-        client: instance_double('client'),
+        client: client,
         chunks: [{ path: 'lib/a.rb', diff: big_diff }]
       )
 
