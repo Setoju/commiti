@@ -94,11 +94,6 @@ module Commiti
     end
     private_class_method :present_or_nil
 
-    def self.present_or_default(value, fallback)
-      present_or_nil(value) || fallback
-    end
-    private_class_method :present_or_default
-
     def self.yaml_behavior_config(merged)
       git = lookup_key(merged, 'git') || {}
       {}.tap do |result|
@@ -154,7 +149,7 @@ module Commiti
 
     def self.lookup_key(hash, key)
       return nil unless hash.is_a?(Hash)
-      hash[key] || hash[key.to_sym]
+      hash.key?(key) ? hash[key] : hash[key.to_sym]
     end
     private_class_method :lookup_key
 

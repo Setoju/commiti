@@ -235,6 +235,18 @@ RSpec.describe Commiti::ConfigLoader do
         expect(config[:google_api_key]).to be_nil
       end
     end
+
+    it 'reads false boolean values from YAML correctly' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, "no_copy: false\nauto_split: false\n")
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:no_copy]).to be(false)
+        expect(config[:auto_split]).to be(false)
+      end
+    end
   end
 
   describe '.deep_merge (private)' do
