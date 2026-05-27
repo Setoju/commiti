@@ -53,7 +53,7 @@ GOOGLE_API_KEY=your_google_ai_key
 # COMMITI_GITLAB_TOKEN=your_gitlab_token
 # COMMITI_GITBUCKET_TOKEN=your_gitbucket_token
 
-# Optional overrides:
+# Optional overrides (prefer .commiti.yml for these — env vars take precedence when set):
 # COMMITI_MODEL=gemma-4-31b-it
 # COMMITI_CANDIDATES=1
 # COMMITI_BASE_BRANCH=main
@@ -68,12 +68,24 @@ GOOGLE_API_KEY=your_google_ai_key
 
 You can copy `.env.example` as a starting point.
 
+A global `~/.commiti.yml` sets personal defaults across all repositories. A project `.commiti.yml` overrides the global file for that repo. Env vars override both.
+
 For project-specific wording and structure, add a `.commiti.yml` file at the repo root:
 
 ```yaml
+# Behavior settings (also settable in ~/.commiti.yml for global defaults)
+model: gemma-4-31b-it          # AI model to use
+candidates: 1                  # number of message candidates to generate (1–5)
+auto_split: false              # auto-group staged changes into multiple commits
+no_copy: false                 # skip copying output to clipboard
+diff_summary_workers: 4        # parallel workers for large-diff summarization
+
+git:
+  base_branch: main            # base branch for PR diffs
+
 text_generation:
   commit:
-    subject_case: uppercase # uppercase, lowercase, or preserve
+    subject_case: uppercase    # uppercase, lowercase, or preserve
   pr:
     sections:
       - name: Overview
@@ -97,6 +109,21 @@ Never commit `.env` to git.
 - `--candidates N` generate `N` output candidates (`1`-`5`, default: `1`)
 - `--auto-split` auto-group staged changes into multiple connected commits (commit flow only)
 - `-h`, `--help` show help
+
+## Shell Completion
+
+### Bash
+
+```bash
+source /path/to/commiti/completions/commiti.bash
+```
+
+### Zsh
+
+```zsh
+fpath=(/path/to/commiti/completions $fpath)
+autoload -Uz compinit && compinit
+```
 
 ## Commit Flow (`--type commit`)
 
