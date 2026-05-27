@@ -68,6 +68,27 @@ module Commiti
     end
     private_class_method :read_yaml_config
 
+    def self.global_config_path
+      File.expand_path('~/.commiti.yml')
+    end
+    private_class_method :global_config_path
+
+    def self.load_global_yaml
+      read_yaml_config(global_config_path)
+    end
+    private_class_method :load_global_yaml
+
+    def self.deep_merge(base, override)
+      base.merge(override) do |_key, old_val, new_val|
+        if old_val.is_a?(Hash) && new_val.is_a?(Hash)
+          deep_merge(old_val, new_val)
+        else
+          new_val
+        end
+      end
+    end
+    private_class_method :deep_merge
+
     def self.google_api_key_from_env(env)
       present_or_nil(env.fetch('GOOGLE_API_KEY', nil)) ||
         present_or_nil(env.fetch('GEMINI_API_KEY', nil)) ||

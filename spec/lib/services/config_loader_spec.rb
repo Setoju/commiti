@@ -121,4 +121,43 @@ RSpec.describe Commiti::ConfigLoader do
       end
     end
   end
+
+  describe '.deep_merge (private)' do
+    it 'overrides scalar values from the override hash' do
+      base = { model: 'gemma', candidates: 1 }
+      override = { model: 'gemini-flash' }
+
+      result = described_class.send(:deep_merge, base, override)
+
+      expect(result[:model]).to eq('gemini-flash')
+      expect(result[:candidates]).to eq(1)
+    end
+
+    it 'recursively merges nested hashes' do
+      base = { text_generation: { commit: { subject_case: 'preserve' }, pr: { sections: [] } } }
+      override = { text_generation: { commit: { subject_case: 'uppercase' } } }
+
+      result = described_class.send(:deep_merge, base, override)
+
+      expect(result[:text_generation][:commit][:subject_case]).to eq('uppercase')
+      expect(result[:text_generation][:pr]).to eq({ sections: [] })
+    end
+
+    it 'replaces arrays entirely rather than appending' do
+      base = { 'pr' => { 'sections' => %w[A B] } }
+      override = { 'pr' => { 'sections' => ['C'] } }
+
+      result = described_class.send(:deep_merge, base, override)
+
+      expect(result['pr']['sections']).to eq(['C'])
+    end
+  end
+
+  describe '.global_config_path (private)' do
+    it 'returns the expanded path to ~/.commiti.yml' do
+      expected = File.expand_path('~/.commiti.yml')
+
+      expect(described_class.send(:global_config_path)).to eq(expected)
+    end
+  end
 end
