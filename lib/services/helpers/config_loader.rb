@@ -124,18 +124,21 @@ module Commiti
 
     def self.lookup_key(hash, key)
       return nil unless hash.is_a?(Hash)
+
       hash.key?(key) ? hash[key] : hash[key.to_sym]
     end
     private_class_method :lookup_key
 
     def self.as_boolean(value)
-      return value if value == true || value == false
+      return value if [true, false].include?(value)
+
       nil
     end
     private_class_method :as_boolean
 
     def self.safe_integer(value)
       return nil if value.nil? || value.to_s.strip.empty?
+
       Integer(value)
     rescue ArgumentError, TypeError
       nil
@@ -144,6 +147,7 @@ module Commiti
 
     def self.safe_float(value)
       return nil if value.nil? || value.to_s.strip.empty?
+
       Float(value)
     rescue ArgumentError, TypeError
       nil
@@ -152,9 +156,11 @@ module Commiti
 
     def self.safe_boolean_from_string(value)
       return nil if value.nil? || value.to_s.strip.empty?
+
       normalized = value.to_s.strip.downcase
       return true if %w[1 true yes on].include?(normalized)
       return false if %w[0 false no off].include?(normalized)
+
       nil
     end
     private_class_method :safe_boolean_from_string

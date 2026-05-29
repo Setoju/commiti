@@ -26,12 +26,12 @@ RSpec.describe Commiti::MessageCleaner do
       end
 
       it 'returns the text unchanged when it already starts with a commit type' do
-        text = "feat: add login endpoint"
+        text = 'feat: add login endpoint'
         expect(cleaner.send(:clean_output, text)).to eq('feat: add login endpoint')
       end
 
       it 'returns the stripped text when no commit prefix is found' do
-        text = "  some random output  "
+        text = '  some random output  '
         expect(cleaner.send(:clean_output, text)).to eq('some random output')
       end
     end

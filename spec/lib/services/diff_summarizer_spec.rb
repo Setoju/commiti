@@ -9,7 +9,6 @@ RSpec.describe Commiti::DiffSummarizer do
     let(:client) { instance_double('client') }
 
     it 'returns original content when diff is under threshold' do
-
       result = described_class.summarize_if_needed(small_diff, client: client)
 
       expect(result[:summarized]).to be(false)
@@ -18,7 +17,7 @@ RSpec.describe Commiti::DiffSummarizer do
     end
 
     it 'passes worker_count through to summarize_chunks' do
-      large_diff = "diff --git a/foo.rb b/foo.rb\n" + ("+" * 9000)
+      large_diff = "diff --git a/foo.rb b/foo.rb\n#{'+' * 9000}"
       allow(Commiti::DiffParser).to receive(:split_by_file).and_return(
         [{ path: 'foo.rb', diff: large_diff }]
       )

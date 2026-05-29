@@ -45,7 +45,10 @@ module Commiti
         end
 
         batched_jobs = build_batch_jobs(large_jobs)
-        run_async_summary_jobs(batched_jobs, results: results, client: client, model: model, worker_count: worker_count) unless batched_jobs.empty?
+        unless batched_jobs.empty?
+          run_async_summary_jobs(batched_jobs, results: results, client: client, model: model,
+                                               worker_count: worker_count)
+        end
         results
       end
 

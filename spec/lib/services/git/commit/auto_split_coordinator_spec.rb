@@ -8,9 +8,14 @@ RSpec.describe Commiti::AutoSplitCoordinator do
   let(:run_stage) { ->(_label, &block) { block.call } }
   let(:generated_message) { 'feat: test change' }
   let(:generate_candidates) { ->(**_kwargs) { [generated_message] } }
-  let(:select_message) { ->(candidates) { candidates.first } }
+  let(:select_message) { lambda(&:first) }
   let(:captured_finalize_args) { [] }
-  let(:finalize) { ->(msg) { captured_finalize_args << msg; :committed } }
+  let(:finalize) do
+    lambda { |msg|
+      captured_finalize_args << msg
+      :committed
+    }
+  end
   let(:maybe_copy_to_clipboard) { ->(_msg) {} }
 
   let(:coordinator) do
@@ -107,7 +112,12 @@ RSpec.describe Commiti::AutoSplitCoordinator do
           diff_metadata: { docs_only: false, total_files: 1 }
         }
       end
-      let(:skip_finalize) { ->(msg) { captured_finalize_args << msg; :skipped } }
+      let(:skip_finalize) do
+        lambda { |msg|
+          captured_finalize_args << msg
+          :skipped
+        }
+      end
       let(:coordinator_with_skip) do
         described_class.new(
           options: options, client: client, model: options[:model],
