@@ -96,57 +96,29 @@ module Commiti
 
     def self.yaml_behavior_config(merged)
       git = lookup_key(merged, 'git') || {}
-      {}.tap do |result|
-        model = present_or_nil(lookup_key(merged, 'model').to_s)
-        result[:model] = model if model
-
-        candidates = safe_integer(lookup_key(merged, 'candidates'))
-        result[:candidates] = candidates unless candidates.nil?
-
-        base_branch = present_or_nil(lookup_key(git, 'base_branch').to_s)
-        result[:base_branch] = base_branch if base_branch
-
-        no_copy = as_boolean(lookup_key(merged, 'no_copy'))
-        result[:no_copy] = no_copy unless no_copy.nil?
-
-        auto_split = as_boolean(lookup_key(merged, 'auto_split'))
-        result[:auto_split] = auto_split unless auto_split.nil?
-
-        workers = safe_integer(lookup_key(merged, 'diff_summary_workers'))
-        result[:diff_summary_workers] = workers unless workers.nil?
-      end
+      {
+        model: present_or_nil(lookup_key(merged, 'model').to_s),
+        candidates: safe_integer(lookup_key(merged, 'candidates')),
+        base_branch: present_or_nil(lookup_key(git, 'base_branch').to_s),
+        no_copy: as_boolean(lookup_key(merged, 'no_copy')),
+        auto_split: as_boolean(lookup_key(merged, 'auto_split')),
+        diff_summary_workers: safe_integer(lookup_key(merged, 'diff_summary_workers'))
+      }.compact
     end
     private_class_method :yaml_behavior_config
 
     def self.env_behavior_overrides(env)
-      {}.tap do |result|
-        model = present_or_nil(env.fetch('COMMITI_MODEL', nil))
-        result[:model] = model if model
-
-        candidates = safe_integer(env.fetch('COMMITI_CANDIDATES', nil))
-        result[:candidates] = candidates unless candidates.nil?
-
-        base_branch = present_or_nil(env.fetch('COMMITI_BASE_BRANCH', nil))
-        result[:base_branch] = base_branch if base_branch
-
-        no_copy = safe_boolean_from_string(env.fetch('COMMITI_NO_COPY', nil))
-        result[:no_copy] = no_copy unless no_copy.nil?
-
-        auto_split = safe_boolean_from_string(env.fetch('COMMITI_AUTO_SPLIT', nil))
-        result[:auto_split] = auto_split unless auto_split.nil?
-
-        temperature = safe_float(env.fetch('COMMITI_MODEL_TEMPERATURE', nil))
-        result[:temperature] = temperature unless temperature.nil?
-
-        timeout = safe_integer(env.fetch('COMMITI_MODEL_TIMEOUT_SECONDS', nil))
-        result[:timeout_seconds] = timeout unless timeout.nil?
-
-        open_timeout = safe_integer(env.fetch('COMMITI_MODEL_OPEN_TIMEOUT_SECONDS', nil))
-        result[:open_timeout_seconds] = open_timeout unless open_timeout.nil?
-
-        workers = safe_integer(env.fetch('COMMITI_DIFF_SUMMARY_WORKERS', nil))
-        result[:diff_summary_workers] = workers unless workers.nil?
-      end
+      {
+        model: present_or_nil(env.fetch('COMMITI_MODEL', nil)),
+        candidates: safe_integer(env.fetch('COMMITI_CANDIDATES', nil)),
+        base_branch: present_or_nil(env.fetch('COMMITI_BASE_BRANCH', nil)),
+        no_copy: safe_boolean_from_string(env.fetch('COMMITI_NO_COPY', nil)),
+        auto_split: safe_boolean_from_string(env.fetch('COMMITI_AUTO_SPLIT', nil)),
+        temperature: safe_float(env.fetch('COMMITI_MODEL_TEMPERATURE', nil)),
+        timeout_seconds: safe_integer(env.fetch('COMMITI_MODEL_TIMEOUT_SECONDS', nil)),
+        open_timeout_seconds: safe_integer(env.fetch('COMMITI_MODEL_OPEN_TIMEOUT_SECONDS', nil)),
+        diff_summary_workers: safe_integer(env.fetch('COMMITI_DIFF_SUMMARY_WORKERS', nil))
+      }.compact
     end
     private_class_method :env_behavior_overrides
 
