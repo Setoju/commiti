@@ -36,6 +36,8 @@ module Commiti
       extract_generated_content(response.body)
     end
 
+    private
+
     def normalize_model(model)
       value = model.to_s.strip
       normalized = value.sub(%r{\Amodels/}, '')
