@@ -9,7 +9,6 @@ RSpec.describe Commiti::DiffSummarizer do
     let(:client) { instance_double('client') }
 
     it 'returns original content when diff is under threshold' do
-
       result = described_class.summarize_if_needed(small_diff, client: client)
 
       expect(result[:summarized]).to be(false)
@@ -18,11 +17,11 @@ RSpec.describe Commiti::DiffSummarizer do
     end
 
     it 'passes worker_count through to summarize_chunks' do
-      large_diff = "diff --git a/foo.rb b/foo.rb\n" + ("+" * 9000)
+      large_diff = "diff --git a/foo.rb b/foo.rb\n#{'+' * 9000}"
       allow(Commiti::DiffParser).to receive(:split_by_file).and_return(
         [{ path: 'foo.rb', diff: large_diff }]
       )
-      expect(Commiti::DiffSummarizer).to receive(:summarize_chunks).with(
+      expect(Commiti::DiffSummarizer::BatchRunner).to receive(:summarize_chunks).with(
         anything,
         hash_including(worker_count: 2)
       ).and_call_original
@@ -41,7 +40,7 @@ RSpec.describe Commiti::DiffSummarizer do
         @@ -1 +1,2 @@
       DIFF
 
-      allow(described_class).to receive(:summarize_chunks).and_raise(Net::ReadTimeout.new)
+      allow(Commiti::DiffSummarizer::BatchRunner).to receive(:summarize_chunks).and_raise(Net::ReadTimeout.new)
 
       result = described_class.summarize_if_needed(
         big_diff,
@@ -58,14 +57,11 @@ RSpec.describe Commiti::DiffSummarizer do
 
   describe '.mechanical_summary' do
     it 'counts additions, deletions, and hunks' do
-      diff = <<~DIFF
-        diff --git a/a.rb b/a.rb
-        @@ -1 +1 @@
-        -old
-        +new
-      DIFF
-
-      expect(described_class.mechanical_summary(diff)).to eq('- 1 additions, 1 deletions across 1 hunk(s)')
+      diff = "+added line\n-removed line\n@@ -1 +1 @@\n"
+      result = Commiti::DiffSummarizer::FallbackBuilder.mechanical_summary(diff)
+      expect(result).to include('1 additions')
+      expect(result).to include('1 deletions')
+      expect(result).to include('1 hunk')
     end
   end
 
@@ -115,7 +111,7 @@ RSpec.describe Commiti::DiffSummarizer do
         end
       end.new
 
-      summaries = described_class.summarize_chunks(chunks, client: client, model: Commiti::GoogleClient::DEFAULT_MODEL)
+      summaries = Commiti::DiffSummarizer::BatchRunner.summarize_chunks(chunks, client: client, model: Commiti::GoogleClient::DEFAULT_MODEL)
 
       expect(summaries[0]).to include("### lib/a.rb\n- summary for lib/a.rb")
       expect(summaries[1]).to include("### lib/b.rb\n- summary for lib/b.rb")

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative 'message_generator_support'
-
 module Commiti
   class MessageGenerator
-    include MessageGeneratorSupport
+    include MessageCleaner
+    include MessageValidator
+    include CommitNormalizer
 
     COMMIT_PREFIX_ERROR = 'First line must start with a conventional commit type (feat:, fix:, etc.).'
     DEFAULT_COMMIT_SUBJECT = 'update project files'

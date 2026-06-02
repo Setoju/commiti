@@ -3,14 +3,17 @@
 module Commiti
   module DiffSummarizer
     module FallbackBuilder
-      def mechanical_summary(diff)
+      FALLBACK_BYTES = 12_000
+      MAX_FILES_IN_SUMMARY = 40
+
+      def self.mechanical_summary(diff)
         additions = diff.to_s.each_line.count { |line| line.start_with?('+') && !line.start_with?('+++') }
         deletions = diff.to_s.each_line.count { |line| line.start_with?('-') && !line.start_with?('---') }
         hunks = diff.to_s.each_line.count { |line| line.start_with?('@@') }
         "- #{additions} additions, #{deletions} deletions across #{hunks} hunk(s)"
       end
 
-      def fallback_summary(diff, chunks: nil)
+      def self.fallback_summary(diff, chunks: nil)
         parsed_chunks = chunks || Commiti::DiffParser.split_by_file(diff)
         files = file_stats_for(parsed_chunks)
         return diff.to_s[0, FALLBACK_BYTES] if files.empty?
@@ -18,13 +21,12 @@ module Commiti
         render_fallback_summary(files)
       end
 
-      private
-
-      def file_stats_for(chunks)
+      def self.file_stats_for(chunks)
         chunks.map { |chunk| file_stats_for_chunk(chunk) }
       end
+      private_class_method :file_stats_for
 
-      def file_stats_for_chunk(chunk)
+      def self.file_stats_for_chunk(chunk)
         status, additions, deletions = file_status_and_counts(chunk[:diff])
         {
           path: chunk[:path].to_s,
@@ -33,8 +35,9 @@ module Commiti
           status: status
         }
       end
+      private_class_method :file_stats_for_chunk
 
-      def file_status_and_counts(diff_text)
+      def self.file_status_and_counts(diff_text)
         status = 'modified'
         additions = 0
         deletions = 0
@@ -49,8 +52,9 @@ module Commiti
 
         [status, additions, deletions]
       end
+      private_class_method :file_status_and_counts
 
-      def detect_status(line, current:)
+      def self.detect_status(line, current:)
         stripped = line.strip
         return 'added' if stripped.start_with?('new file mode')
         return 'deleted' if stripped.start_with?('deleted file mode')
@@ -58,12 +62,14 @@ module Commiti
 
         current
       end
+      private_class_method :detect_status
 
-      def metadata_line?(line)
+      def self.metadata_line?(line)
         line.start_with?('diff --git ', '+++', '---', '@@')
       end
+      private_class_method :metadata_line?
 
-      def render_fallback_summary(files)
+      def self.render_fallback_summary(files)
         summary_lines = [
           '### Diff Overview',
           "- Total files changed: #{files.length}",
@@ -75,18 +81,21 @@ module Commiti
 
         summary_lines.join("\n").strip
       end
+      private_class_method :render_fallback_summary
 
-      def append_file_sections(summary_lines, files)
+      def self.append_file_sections(summary_lines, files)
         files.first(MAX_FILES_IN_SUMMARY).each do |file|
           summary_lines.concat(render_file_section(file))
         end
       end
+      private_class_method :append_file_sections
 
-      def append_truncation_notice(summary_lines, files)
+      def self.append_truncation_notice(summary_lines, files)
         summary_lines << "...and #{files.length - MAX_FILES_IN_SUMMARY} more files" if files.length > MAX_FILES_IN_SUMMARY
       end
+      private_class_method :append_truncation_notice
 
-      def render_file_section(file)
+      def self.render_file_section(file)
         [
           "### #{file[:path]}",
           "- Status: #{file[:status]}",
@@ -95,6 +104,7 @@ module Commiti
           ''
         ]
       end
+      private_class_method :render_file_section
     end
   end
 end

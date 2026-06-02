@@ -2,12 +2,7 @@
 
 module Commiti
   module Flows
-    class BaseFlow
-      def initialize(options:)
-        # Merge defaults/config file with CLI options (CLI options win)
-        @options = Commiti::ConfigLoader.load.merge(options || {})
-      end
-
+    class BaseFlow < FlowBase
       def run
         prepare!
         diff = collect_diff
@@ -38,8 +33,6 @@ module Commiti
 
       private
 
-      attr_reader :options
-
       def prepare!; end
 
       def collect_diff
@@ -51,10 +44,6 @@ module Commiti
       end
 
       def finalize(_message); end
-
-      def run_stage(message, &)
-        Commiti::Spinner.run(message, &)
-      end
 
       def generate_with_quality_check(client:, prompt:, diff_metadata:, model:)
         message_generator.generate_with_quality_check(
