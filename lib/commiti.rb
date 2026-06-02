@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+module Commiti
+  class ConfigError < StandardError; end
+end
+
+require_relative 'services/clients/base_client'
 require_relative 'services/git/git_reader'
 require_relative 'services/git/git_writer'
 require_relative 'services/text_generation_style'
