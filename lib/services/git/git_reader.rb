@@ -35,6 +35,13 @@ module Commiti
       out
     end
 
+    def self.remote_url(remote: 'origin')
+      output, status = Open3.capture2('git', 'remote', 'get-url', remote)
+      status.success? ? output.strip : nil
+    rescue StandardError
+      nil
+    end
+
     LOG_RECORD_SEPARATOR = "\x1e"
     LOG_FIELD_SEPARATOR = "\x1f"
 
