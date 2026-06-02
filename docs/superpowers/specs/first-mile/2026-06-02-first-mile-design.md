@@ -124,14 +124,14 @@ Each check prints `[OK]`, `[WARN]`, or `[FAIL]` with a one-line explanation and 
 
 ## CLI Entry Point
 
-Add two new `--type` values to `bin/commiti` (consistent with existing `commit`, `pr`, `changelog`):
+`commiti init` and `commiti doctor` are bare subcommands, not `--type` values. `bin/commiti` checks `ARGV[0]` before option parsing and dispatches immediately:
 
 ```
-commiti --type init       # runs InitFlow
-commiti --type doctor     # runs DoctorFlow
+commiti init       # runs InitFlow
+commiti doctor     # runs DoctorFlow
 ```
 
-Convenience aliases without `--type` are also accepted (`commiti init`, `commiti doctor`) by checking `ARGV[0]` before option parsing. Both paths bypass `BaseFlow` entirely and route to `InitFlow.new.run` or `DoctorFlow.new.run`.
+Both bypass `BaseFlow` entirely and route directly to `InitFlow.new.run` or `DoctorFlow.new.run`. All other invocations fall through to the existing `--type` option parser.
 
 ---
 
@@ -139,8 +139,8 @@ Convenience aliases without `--type` are also accepted (`commiti init`, `commiti
 
 ```
 bin/commiti
-  └─ OptionParser → InitFlow.run     (new path)
-  └─ OptionParser → DoctorFlow.run   (new path)
+  └─ ARGV[0] == 'init'   → InitFlow.run      (bypasses option parser)
+  └─ ARGV[0] == 'doctor' → DoctorFlow.run    (bypasses option parser)
   └─ OptionParser → CommitFlow / PrFlow / ChangelogFlow
        └─ BaseFlow#run
             └─ ClientFactory.build(config:)   ← NEW
