@@ -5,6 +5,12 @@ require 'optparse'
 require 'dotenv/load'
 require 'commiti'
 
+case ARGV[0]
+when 'init'
+  Commiti::Flows::InitFlow.new.run
+  exit(0)
+end
+
 options = {
   type: :commit,
   auto_split: false
