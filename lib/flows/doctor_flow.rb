@@ -76,7 +76,7 @@ module Commiti
       def check_reachability
         client = Commiti::ClientFactory.build(config: config)
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        client.generate(system: 'Reply with: ok', user: 'ok', model: config[:model])
+        client.generate(system: 'Reply with: ok', user: 'ok', model: nil)
         ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         [:success, "provider responded (#{ms}ms)"]
       rescue Commiti::ConfigError => e

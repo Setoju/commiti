@@ -53,18 +53,21 @@ module Commiti
 
         config_path = global ? File.expand_path('~/.commiti.yml') : File.join(Dir.pwd, '.commiti.yml')
 
-        if File.exist?(config_path)
-          answer = Commiti::InteractivePrompt.ask_yes_no("#{config_path} already exists. Update it?", default: :yes)
-          write_yaml(config_path, provider[:key], provider[:default_model]) if answer == :yes
-        else
-          write_yaml(config_path, provider[:key], provider[:default_model])
-        end
+        yaml_written = if File.exist?(config_path)
+                         answer = Commiti::InteractivePrompt.ask_yes_no("#{config_path} already exists. Update it?", default: :yes)
+                         answer == :yes && write_yaml(config_path, provider[:key], provider[:default_model])
+                       else
+                         write_yaml(config_path, provider[:key], provider[:default_model])
+                         true
+                       end
 
-        if global
-          write_to_shell_profile(provider[:env_var], credential)
-        else
-          write_to_dotenv(provider[:env_var], credential)
-          handle_gitignore
+        if yaml_written
+          if global
+            write_to_shell_profile(provider[:env_var], credential)
+          else
+            write_to_dotenv(provider[:env_var], credential)
+            handle_gitignore
+          end
         end
 
         puts "\n#{Commiti::TerminalUI.status(:success, 'Setup complete! Run: commiti')}"
@@ -117,7 +120,7 @@ module Commiti
 
       def write_to_shell_profile(env_var, value)
         profile = detect_shell_profile
-        File.open(profile, 'a') { |f| f.puts("\nexport #{env_var}=#{value}") }
+        File.open(profile, 'a') { |f| f.puts("\nexport #{env_var}=\"#{value}\"") }
         puts Commiti::TerminalUI.status(:success, "API key exported in #{profile}")
         puts Commiti::TerminalUI.status(:warn, "Run: source #{profile}  (or open a new terminal)")
       end

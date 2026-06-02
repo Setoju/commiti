@@ -84,7 +84,7 @@ RSpec.describe Commiti::Flows::InitFlow do
 
     it 'appends export KEY=value to shell profile' do
       flow.run
-      expect(File.read(shell_profile_path)).to include('export GOOGLE_API_KEY=my-key')
+      expect(File.read(shell_profile_path)).to include('export GOOGLE_API_KEY="my-key"')
     end
 
     it 'does not create .env for global config' do
