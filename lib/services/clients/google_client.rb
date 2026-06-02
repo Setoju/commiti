@@ -5,7 +5,7 @@ require 'json'
 require 'uri'
 
 module Commiti
-  class GoogleClient
+  class GoogleClient < BaseClient
     include HTTParty
 
     base_uri 'https://generativelanguage.googleapis.com'
