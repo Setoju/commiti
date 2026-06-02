@@ -28,7 +28,13 @@ RSpec.describe Commiti::Flows::DoctorFlow do
       end
 
       it 'prints a line for each check' do
-        expect { flow.run rescue nil }.to output(/git repo/i).to_stdout
+        expect do
+          begin
+            flow.run
+          rescue SystemExit
+            nil
+          end
+        end.to output(/git repo/i).to_stdout
       end
     end
 
