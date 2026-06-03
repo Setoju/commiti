@@ -68,9 +68,13 @@ module Commiti
     def self.build(type:, diff:, summarized: false, raw_diff: nil, diff_metadata: nil, style_config: nil,
                    style_profile: nil, inferred_scope: nil)
       style_config = Commiti::TextGenerationStyle::DEFAULT_CONFIG if style_config.nil?
-      system_prompt = type == :pr ? pr_system_prompt(style_config) : commit_system_prompt(style_config,
-                                                                                          style_profile: style_profile,
-                                                                                          inferred_scope: inferred_scope)
+      system_prompt = if type == :pr
+                        pr_system_prompt(style_config)
+                      else
+                        commit_system_prompt(style_config,
+                                             style_profile: style_profile,
+                                             inferred_scope: inferred_scope)
+                      end
       scope_overview = build_scope_overview(raw_diff || diff, diff_metadata: diff_metadata)
 
       diff_section = if summarized

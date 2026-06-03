@@ -17,7 +17,7 @@ module Commiti
       @config = config || {}
     end
 
-    def generate(system:, user:, model: nil, temperature: nil, timeout_seconds: nil, **opts)
+    def generate(system:, user:, model: nil, temperature: nil, timeout_seconds: nil, **_opts)
       api_key = ENV.fetch('OPENAI_API_KEY', '').strip
       resolved_model = model || @config[:model] || DEFAULT_MODEL
       resolved_temp  = normalize_float(temperature || @config[:temperature], DEFAULT_TEMPERATURE)
@@ -53,6 +53,5 @@ module Commiti
 
       content
     end
-
   end
 end

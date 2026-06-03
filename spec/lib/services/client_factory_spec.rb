@@ -23,7 +23,7 @@ RSpec.describe Commiti::ClientFactory do
       end
 
       it 'raises ConfigError when OPENAI_API_KEY is missing' do
-        stub_const('ENV', ENV.to_h.reject { |k, _| k == 'OPENAI_API_KEY' })
+        stub_const('ENV', ENV.to_h.except('OPENAI_API_KEY'))
         expect { described_class.build(config: { provider: 'openai' }) }
           .to raise_error(Commiti::ConfigError, /OPENAI_API_KEY/)
       end
@@ -36,7 +36,7 @@ RSpec.describe Commiti::ClientFactory do
       end
 
       it 'raises ConfigError when ANTHROPIC_API_KEY is missing' do
-        stub_const('ENV', ENV.to_h.reject { |k, _| k == 'ANTHROPIC_API_KEY' })
+        stub_const('ENV', ENV.to_h.except('ANTHROPIC_API_KEY'))
         expect { described_class.build(config: { provider: 'anthropic' }) }
           .to raise_error(Commiti::ConfigError, /ANTHROPIC_API_KEY/)
       end

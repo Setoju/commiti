@@ -2,7 +2,8 @@
 
 module Commiti
   class AutoSplitCoordinator
-    def initialize(options:, client:, model:, run_stage:, generate_candidates:, select_message:, finalize:, maybe_copy_to_clipboard:, style_profile: nil)
+    def initialize(options:, client:, model:, run_stage:, generate_candidates:, select_message:, finalize:, maybe_copy_to_clipboard:,
+                   style_profile: nil)
       @options = options
       @client = client
       @model = model

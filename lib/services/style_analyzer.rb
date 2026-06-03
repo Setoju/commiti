@@ -82,7 +82,7 @@ module Commiti
         type: type,
         scope: scope&.downcase,
         subject: subject_text,
-        has_body: commit[:body].to_s.strip.empty? ? false : true,
+        has_body: !commit[:body].to_s.strip.empty?,
         subject_case: classify_subject_case(subject_text)
       }
     end
@@ -114,7 +114,7 @@ module Commiti
     private_class_method :majority_case
 
     def self.tally(values)
-      values.each_with_object(Hash.new(0)) { |value, acc| acc[value] += 1 }
+      values.tally
     end
     private_class_method :tally
 

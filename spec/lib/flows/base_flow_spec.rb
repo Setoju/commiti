@@ -37,12 +37,12 @@ RSpec.describe Commiti::Flows::BaseFlow do
         subject_case: 'lowercase'
       )
       flow_with_snapshot = flow_class.new(options: {
-        candidates: 1,
-        no_copy: true,
-        base_branch: 'main',
-        style_learning: false,
-        style_snapshot: snapshot
-      })
+                                            candidates: 1,
+                                            no_copy: true,
+                                            base_branch: 'main',
+                                            style_learning: false,
+                                            style_snapshot: snapshot
+                                          })
 
       expect(flow_with_snapshot.send(:style_profile_for_flow)).to eq(snapshot)
     end
