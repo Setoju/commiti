@@ -11,7 +11,7 @@ RSpec.describe Commiti::Flows::CommitFlow do
     allow(Commiti::Spinner).to receive(:run) { |_message, &block| block.call }
     allow(Commiti::CommitStaging).to receive(:prepare)
     allow(Commiti::GitReader).to receive(:staged_diff).and_return('diff --git a/a.rb b/a.rb')
-    allow(Commiti::GoogleClient).to receive(:new).and_return(client)
+    allow(Commiti::ClientFactory).to receive(:build).and_return(client)
     allow(flow).to receive(:maybe_copy_to_clipboard)
     allow(flow).to receive(:select_message).and_return('feat: grouped change')
     allow(flow).to receive(:generate_candidates).and_return(['feat: grouped change'])

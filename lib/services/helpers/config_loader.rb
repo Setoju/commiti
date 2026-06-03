@@ -101,17 +101,17 @@ module Commiti
     private_class_method :present_or_nil
 
     def self.yaml_behavior_config(merged)
-      git = lookup_key(merged, 'git') || {}
+      git = lookup(merged, 'git') || {}
       {
-        provider: present_or_nil(lookup_key(merged, 'provider').to_s),
-        model: present_or_nil(lookup_key(merged, 'model').to_s),
-        candidates: safe_integer(lookup_key(merged, 'candidates')),
-        base_branch: present_or_nil(lookup_key(git, 'base_branch').to_s),
-        no_copy: as_boolean(lookup_key(merged, 'no_copy')),
-        auto_split: as_boolean(lookup_key(merged, 'auto_split')),
-        diff_summary_workers: safe_integer(lookup_key(merged, 'diff_summary_workers')),
-        style_learning: as_boolean(lookup_key(merged, 'style_learning')),
-        style_lookback: normalize_style_lookback(lookup_key(merged, 'style_lookback'))
+        provider: present_or_nil(lookup(merged, 'provider').to_s),
+        model: present_or_nil(lookup(merged, 'model').to_s),
+        candidates: safe_integer(lookup(merged, 'candidates')),
+        base_branch: present_or_nil(lookup(git, 'base_branch').to_s),
+        no_copy: as_boolean(lookup(merged, 'no_copy')),
+        auto_split: as_boolean(lookup(merged, 'auto_split')),
+        diff_summary_workers: safe_integer(lookup(merged, 'diff_summary_workers')),
+        style_learning: as_boolean(lookup(merged, 'style_learning')),
+        style_lookback: normalize_style_lookback(lookup(merged, 'style_lookback'))
       }.compact
     end
     private_class_method :yaml_behavior_config
@@ -134,19 +134,19 @@ module Commiti
     private_class_method :env_behavior_overrides
 
     def self.style_snapshot_from_yaml(merged)
-      text_generation = lookup_key(merged, 'text_generation') || lookup_key(merged, 'generation') || {}
-      commit_block = lookup_key(text_generation, 'commit') || {}
-      snapshot = lookup_key(commit_block, 'style_snapshot')
+      text_generation = lookup(merged, 'text_generation') || lookup(merged, 'generation') || {}
+      commit_block = lookup(text_generation, 'commit') || {}
+      snapshot = lookup(commit_block, 'style_snapshot')
       Commiti::StyleAnalyzer.profile_from_snapshot(snapshot)
     end
     private_class_method :style_snapshot_from_yaml
 
-    def self.lookup_key(hash, key)
+    def self.lookup(hash, key)
       return nil unless hash.is_a?(Hash)
 
       hash.key?(key) ? hash[key] : hash[key.to_sym]
     end
-    private_class_method :lookup_key
+    private_class_method :lookup
 
     def self.as_boolean(value)
       return value if [true, false].include?(value)

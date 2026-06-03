@@ -14,7 +14,6 @@ module Commiti
       keyword_init: true
     )
 
-    COMMIT_PREFIX_PATTERN = /\A(feat|fix|chore|refactor|docs|style|test|perf|ci|build|revert)(\([^)]+\))?!?\s*:?\s*/i
     MIN_SAMPLE_SIZE = 5
 
     def self.analyze(lookback: 50)
@@ -69,7 +68,7 @@ module Commiti
 
     def self.extract_sample(commit)
       subject = commit[:subject].to_s.strip
-      match = subject.match(COMMIT_PREFIX_PATTERN)
+      match = subject.match(Commiti::MessageGenerator::COMMIT_PREFIX_PATTERN)
       return nil unless match
 
       type = match[1].to_s.downcase
@@ -77,7 +76,7 @@ module Commiti
       scope = scope[1..-2] if scope.start_with?('(') && scope.end_with?(')')
       scope = nil if scope.to_s.strip.empty?
 
-      subject_text = subject.sub(COMMIT_PREFIX_PATTERN, '').strip
+      subject_text = subject.sub(Commiti::MessageGenerator::COMMIT_PREFIX_PATTERN, '').strip
       {
         type: type,
         scope: scope&.downcase,

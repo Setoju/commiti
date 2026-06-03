@@ -2,7 +2,11 @@
 
 module Commiti
   module Flows
-    class BaseFlow < FlowBase
+    class BaseFlow
+      def initialize(options:)
+        @options = Commiti::ConfigLoader.load.merge(options || {})
+      end
+
       def run
         prepare!
         diff = collect_diff
@@ -34,6 +38,12 @@ module Commiti
       end
 
       private
+
+      attr_reader :options
+
+      def run_stage(message, &)
+        Commiti::Spinner.run(message, &)
+      end
 
       def prepare!; end
 
