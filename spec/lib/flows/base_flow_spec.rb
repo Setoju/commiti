@@ -48,6 +48,32 @@ RSpec.describe Commiti::Flows::BaseFlow do
     end
   end
 
+  describe '#initialize' do
+    it 'merges CLI options over config defaults' do
+      flow = flow_class.new(options: { model: 'custom-model', no_copy: true })
+      expect(flow.send(:options)[:model]).to eq('custom-model')
+      expect(flow.send(:options)[:no_copy]).to be(true)
+    end
+
+    it 'uses config defaults when CLI options are empty' do
+      flow = flow_class.new(options: {})
+      expect(flow.send(:options)[:candidates]).to eq(1)
+    end
+
+    it 'handles nil options gracefully' do
+      flow = flow_class.new(options: nil)
+      expect(flow.send(:options)[:candidates]).to eq(1)
+    end
+  end
+
+  describe '#run_stage' do
+    it 'delegates to Spinner.run and returns block value' do
+      allow(Commiti::Spinner).to receive(:run).and_yield
+      result = flow.send(:run_stage, 'label') { 42 }
+      expect(result).to eq(42)
+    end
+  end
+
   describe '#generate_with_quality_check' do
     it 'raises when retry output is still invalid' do
       long_subject = "feat: #{'a' * 110}"

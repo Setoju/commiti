@@ -2,7 +2,7 @@
 
 module Commiti
   module Flows
-    class ChangelogFlow < FlowBase
+    class ChangelogFlow < BaseFlow
       TYPE_TITLES = {
         'feat' => 'Features',
         'fix' => 'Fixes',
