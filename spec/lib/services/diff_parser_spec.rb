@@ -50,4 +50,25 @@ RSpec.describe Commiti::DiffParser do
       expect(metadata[:docs_only]).to be(false)
     end
   end
+
+  describe '.clip' do
+    it 'returns the diff unchanged when it is within the byte limit' do
+      diff = 'a' * 100
+      clipped = described_class.clip(diff, max_bytes: 500)
+      expect(clipped).to eq(diff)
+    end
+
+    it 'clips by file and hunk while preserving structure and notice' do
+      header = "diff --git a/a.rb b/a.rb\nindex 000..111 100644\n--- a/a.rb\n+++ b/a.rb\n"
+      hunk   = "@@ -1 +1,400 @@\n" + ("+line\n" * 400)
+      diff   = header + hunk
+
+      clipped = described_class.clip(diff, max_bytes: 500)
+
+      expect(clipped.bytesize).to be <= 500
+      expect(clipped).to include('diff --git a/a.rb b/a.rb')
+      expect(clipped).to include('@@ -1 +1,400 @@')
+      expect(clipped).to include(described_class::TRUNCATION_NOTICE.strip)
+    end
+  end
 end
