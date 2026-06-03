@@ -59,6 +59,20 @@ module Commiti
       input.to_s.strip
     end
 
+    def self.ask_select(question, options)
+      puts Commiti::TerminalUI.prompt(question)
+      options.each_with_index { |opt, i| puts "  #{Commiti::TerminalUI.muted("#{i + 1}.")} #{opt}" }
+      loop do
+        input = read_input(Commiti::TerminalUI.muted("Choice [1-#{options.length}]: "))
+        return nil if input.nil?
+
+        idx = input.strip.to_i - 1
+        return options[idx] if input.strip.match?(/\A\d+\z/) && idx.between?(0, options.length - 1)
+
+        puts Commiti::TerminalUI.status(:warn, "Please type a number between 1 and #{options.length}.")
+      end
+    end
+
     def self.edit_message(initial_message)
       # Keep the temp file closed while the external editor runs.
       # On Windows, open handles can prevent editors like Notepad from

@@ -8,6 +8,7 @@ module Commiti
     DEFAULT_TEXT_GENERATION_CONFIG = Commiti::TextGenerationStyle::DEFAULT_CONFIG
 
     DEFAULT_CONFIG = {
+      provider: 'google',
       google_api_key: nil,
       github_token: nil,
       gitlab_token: nil,
@@ -97,6 +98,7 @@ module Commiti
     def self.yaml_behavior_config(merged)
       git = lookup_key(merged, 'git') || {}
       {
+        provider: present_or_nil(lookup_key(merged, 'provider').to_s),
         model: present_or_nil(lookup_key(merged, 'model').to_s),
         candidates: safe_integer(lookup_key(merged, 'candidates')),
         base_branch: present_or_nil(lookup_key(git, 'base_branch').to_s),
@@ -109,6 +111,7 @@ module Commiti
 
     def self.env_behavior_overrides(env)
       {
+        provider: present_or_nil(env.fetch('COMMITI_PROVIDER', nil)),
         model: present_or_nil(env.fetch('COMMITI_MODEL', nil)),
         candidates: safe_integer(env.fetch('COMMITI_CANDIDATES', nil)),
         base_branch: present_or_nil(env.fetch('COMMITI_BASE_BRANCH', nil)),

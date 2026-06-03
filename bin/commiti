@@ -5,6 +5,15 @@ require 'optparse'
 require 'dotenv/load'
 require 'commiti'
 
+case ARGV[0]
+when 'init'
+  Commiti::Flows::InitFlow.new.run
+  exit(0)
+when 'doctor'
+  Commiti::Flows::DoctorFlow.new.run
+  exit(0)
+end
+
 options = {
   type: :commit,
   auto_split: false
@@ -13,7 +22,7 @@ options = {
 OptionParser.new do |opts|
   opts.banner = <<~BANNER
 
-    AI Commit - Powered by Google AI (#{Commiti::GoogleClient::DEFAULT_MODEL})
+    Commiti — AI commit & PR generator
     Usage: commiti [options]
 
   BANNER
@@ -52,36 +61,37 @@ OptionParser.new do |opts|
 end.parse!
 
 begin
-  model_label = ENV.fetch('COMMITI_MODEL', Commiti::GoogleClient::DEFAULT_MODEL)
-  flow_label = case options[:type]
-               when :pr then 'PR flow'
-               when :changelog then 'Changelog flow'
-               else 'Commit flow'
-               end
-  base_label = options[:type] == :pr ? "Base: #{options[:base_branch] || 'main'}" : nil
+  provider_label = ENV.fetch('COMMITI_PROVIDER', 'google')
+  model_label    = ENV.fetch('COMMITI_MODEL', 'default')
+  flow_label     = case options[:type]
+                   when :pr then 'PR flow'
+                   when :changelog then 'Changelog flow'
+                   else 'Commit flow'
+                   end
+  base_label  = options[:type] == :pr ? "Base: #{options[:base_branch] || 'main'}" : nil
   range_label = options[:type] == :changelog ? "Range: #{options[:range] || 'unset'}" : nil
-  model_meta = options[:type] == :changelog ? nil : "Model: #{model_label}"
-  meta = [flow_label, model_meta, base_label, range_label].compact.join(' • ')
+  model_meta  = options[:type] == :changelog ? nil : "Model: #{model_label}"
+  meta = [flow_label, "Provider: #{provider_label}", model_meta, base_label, range_label].compact.join(' • ')
   puts Commiti::TerminalUI.banner(title: 'Commiti', subtitle: 'AI commit & PR generator', meta: meta)
 
   flow = case options[:type]
-         when :pr
-           Commiti::Flows::PrFlow.new(options: options)
-         when :changelog
-           Commiti::Flows::ChangelogFlow.new(options: options)
-         else
-           Commiti::Flows::CommitFlow.new(options: options)
+         when :pr        then Commiti::Flows::PrFlow.new(options: options)
+         when :changelog then Commiti::Flows::ChangelogFlow.new(options: options)
+         else                 Commiti::Flows::CommitFlow.new(options: options)
          end
 
   flow.run
+rescue Commiti::ConfigError => e
+  puts "\nConfiguration error: #{e.message}\n\n"
+  exit 1
 rescue RuntimeError => e
   puts "\nError: #{e.message}\n\n"
   exit 1
 rescue SocketError, Errno::ECONNREFUSED
-  puts "\nError: Could not connect to Google AI API. Check network access and DNS resolution.\n\n"
+  puts "\nError: Could not connect to AI provider API. Check network access and DNS resolution.\n\n"
   exit 1
 rescue Net::OpenTimeout, Net::ReadTimeout
-  puts "\nError: Google AI request timed out while generating output. Try again or use a smaller diff.\n\n"
+  puts "\nError: AI provider request timed out. Try again or use a smaller diff.\n\n"
   exit 1
 rescue StandardError => e
   puts "\nError: Something went wrong (#{e.class}).\n\n"

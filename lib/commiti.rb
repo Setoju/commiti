@@ -1,9 +1,18 @@
 # frozen_string_literal: true
 
+module Commiti
+  class ConfigError < StandardError; end
+end
+
+require_relative 'services/clients/base_client'
 require_relative 'services/git/git_reader'
 require_relative 'services/git/git_writer'
 require_relative 'services/text_generation_style'
-require_relative 'services/google_client'
+require_relative 'services/clients/google_client'
+require_relative 'services/clients/openai_client'
+require_relative 'services/clients/anthropic_client'
+require_relative 'services/clients/ollama_client'
+require_relative 'services/client_factory'
 require_relative 'services/helpers/config_loader'
 require_relative 'services/git/diff_parser'
 require_relative 'services/diff_summarization/diff_summarizer'
@@ -31,3 +40,5 @@ require_relative 'flows/base_flow'
 require_relative 'flows/commit_flow'
 require_relative 'flows/changelog_flow'
 require_relative 'flows/pr_flow'
+require_relative 'flows/init_flow'
+require_relative 'flows/doctor_flow'

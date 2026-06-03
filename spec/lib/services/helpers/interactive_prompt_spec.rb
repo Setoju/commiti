@@ -48,6 +48,23 @@ RSpec.describe Commiti::InteractivePrompt do
     end
   end
 
+  describe '.ask_select' do
+    it 'returns the chosen option by 1-based number' do
+      allow(described_class).to receive(:read_input).and_return('2')
+      expect(described_class.ask_select('Pick one', %w[Alpha Beta Gamma])).to eq('Beta')
+    end
+
+    it 'loops on invalid input and returns on valid' do
+      allow(described_class).to receive(:read_input).and_return('x', '0', '1')
+      expect(described_class.ask_select('Pick one', %w[Alpha Beta])).to eq('Alpha')
+    end
+
+    it 'returns nil when input is nil (Ctrl-C)' do
+      allow(described_class).to receive(:read_input).and_return(nil)
+      expect(described_class.ask_select('Pick one', %w[Alpha Beta])).to be_nil
+    end
+  end
+
   describe '.editor_command' do
     around do |example|
       orig_visual = ENV.fetch('VISUAL', nil)

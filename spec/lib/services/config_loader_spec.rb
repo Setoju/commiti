@@ -261,6 +261,34 @@ RSpec.describe Commiti::ConfigLoader do
         expect(config[:diff_summary_workers]).to eq(2)
       end
     end
+
+    describe 'provider config' do
+      it 'defaults provider to google' do
+        config = described_class.load(env: {})
+        expect(config[:provider]).to eq('google')
+      end
+
+      it 'reads provider from YAML' do
+        Dir.mktmpdir do |dir|
+          File.write(File.join(dir, '.commiti.yml'), "provider: openai\n")
+          config = described_class.load(env: {}, cwd: dir)
+          expect(config[:provider]).to eq('openai')
+        end
+      end
+
+      it 'reads provider from COMMITI_PROVIDER env var' do
+        config = described_class.load(env: { 'COMMITI_PROVIDER' => 'anthropic' })
+        expect(config[:provider]).to eq('anthropic')
+      end
+
+      it 'env var overrides YAML provider' do
+        Dir.mktmpdir do |dir|
+          File.write(File.join(dir, '.commiti.yml'), "provider: openai\n")
+          config = described_class.load(env: { 'COMMITI_PROVIDER' => 'ollama' }, cwd: dir)
+          expect(config[:provider]).to eq('ollama')
+        end
+      end
+    end
   end
 
   describe '.deep_merge (private)' do

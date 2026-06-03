@@ -6,7 +6,7 @@ module Commiti
       def run
         prepare!
         diff = collect_diff
-        client = Commiti::GoogleClient.new(config: options)
+        client = Commiti::ClientFactory.build(config: options)
         selected_model = options[:model]
         context = Commiti::FlowContextBuilder.build(
           flow_type: flow_type,
