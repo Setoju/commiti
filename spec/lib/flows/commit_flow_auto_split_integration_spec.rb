@@ -47,7 +47,7 @@ RSpec.describe 'CommitFlow auto-split', :integration do
       git!(dir, 'add', '-A')
 
       allow(Commiti::Spinner).to receive(:run) { |_message, &block| block.call }
-      allow(Commiti::GoogleClient).to receive(:new).and_return(FakeGoogleClient.new)
+      allow(Commiti::ClientFactory).to receive(:build).and_return(FakeGoogleClient.new)
       allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(false)
       allow(Commiti::InteractivePrompt).to receive(:ask_commit_action).and_return(:yes)
 
@@ -94,7 +94,7 @@ RSpec.describe 'CommitFlow auto-split', :integration do
       git!(dir, 'add', '-A')
 
       allow(Commiti::Spinner).to receive(:run) { |_message, &block| block.call }
-      allow(Commiti::GoogleClient).to receive(:new).and_return(FakeGoogleClient.new)
+      allow(Commiti::ClientFactory).to receive(:build).and_return(FakeGoogleClient.new)
       allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(false)
       allow(Commiti::InteractivePrompt).to receive(:ask_commit_action).and_return(:yes, :no)
 
@@ -127,7 +127,7 @@ RSpec.describe 'CommitFlow auto-split', :integration do
       git!(dir, 'add', '-A')
 
       allow(Commiti::Spinner).to receive(:run) { |_message, &block| block.call }
-      allow(Commiti::GoogleClient).to receive(:new).and_return(FakeGoogleClient.new)
+      allow(Commiti::ClientFactory).to receive(:build).and_return(FakeGoogleClient.new)
       allow(Commiti::InteractivePrompt).to receive(:ask_yes_no).and_return(false)
       allow(Commiti::InteractivePrompt).to receive(:ask_commit_action).and_return(:yes, :yes)
 
