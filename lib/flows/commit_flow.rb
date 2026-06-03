@@ -34,23 +34,81 @@ module Commiti
       def run_auto_split
         prepare!
         diff = collect_diff
-        client = Commiti::GoogleClient.new(config: options)
+        client = Commiti::ClientFactory.build(config: options)
         model = options[:model]
 
-        Commiti::AutoSplitCoordinator.new(
-          options: options,
-          client: client,
-          model: model,
-          run_stage: method(:run_stage),
-          generate_candidates: method(:generate_candidates),
-          select_message: method(:select_message),
-          finalize: method(:finalize),
-          maybe_copy_to_clipboard: method(:maybe_copy_to_clipboard),
-          style_profile: style_profile_for_flow
-        ).run(diff: diff)
+        context = build_split_context(diff: diff, client: client, model: model)
+        return run_single_group(context: context, client: client, model: model) if context[:change_groups].length <= 1
+
+        groups = Commiti::GroupEditor.edit(context[:change_groups])
+        if groups.length <= 1
+          single_context = groups.first ? build_split_context(diff: group_diff(groups.first), client: client, model: model) : context
+          return run_single_group(context: single_context, client: client, model: model)
+        end
+
+        run_stage('Unstaging current index for grouped commit execution') { Commiti::GitWriter.unstage_all! }
+        puts "\n#{Commiti::TerminalUI.status(:info, "Auto-split detected #{groups.length} connected change groups.")}"
+
+        groups.each_with_index do |group, index|
+          break if process_group(group: group, index: index, total: groups.length, client: client, model: model) == :stop
+        end
       rescue StandardError
         run_stage('Restaging uncommitted changes after failure') { Commiti::GitWriter.stage_all! }
         raise
+      end
+
+      def build_split_context(diff:, client:, model:)
+        Commiti::FlowContextBuilder.build(
+          flow_type: :commit,
+          diff: diff,
+          client: client,
+          run_stage: method(:run_stage),
+          model: model,
+          text_generation_config: options[:text_generation],
+          style_profile: style_profile_for_flow,
+          worker_count: options[:diff_summary_workers]
+        )
+      end
+
+      def run_single_group(context:, client:, model:)
+        puts "\n#{Commiti::TerminalUI.status(:info, 'Auto-split found a single connected change group. Falling back to single commit flow.')}"
+        Commiti::MessagePresenter.print_summarization_notice(context[:summarized_result])
+
+        message = generate_message_for_context(context: context, client: client, model: model)
+        maybe_copy_to_clipboard(message)
+        finalize(message)
+      end
+
+      def process_group(group:, index:, total:, client:, model:)
+        run_stage("Staging files for group #{index + 1}/#{total}") { Commiti::GitWriter.stage_files!(group[:files]) }
+        return :continue unless run_stage('Checking staged changes') { Commiti::GitWriter.staged_changes? }
+
+        puts "\n#{Commiti::TerminalUI.panel("Group #{index + 1}/#{total} files", Commiti::TerminalUI.bullets(group[:files]))}\n"
+
+        group_context = build_split_context(diff: group_diff(group), client: client, model: model)
+        Commiti::MessagePresenter.print_summarization_notice(group_context[:summarized_result])
+
+        message = generate_message_for_context(context: group_context, client: client, model: model)
+        maybe_copy_to_clipboard(message)
+        return :continue if finalize(message) == :committed
+
+        puts Commiti::TerminalUI.status(:warn, "Stopping auto-split flow at group #{index + 1} because commit was skipped.")
+        run_stage('Restaging remaining uncommitted changes') { Commiti::GitWriter.stage_all! }
+        :stop
+      end
+
+      def generate_message_for_context(context:, client:, model:)
+        candidates = generate_candidates(
+          client: client,
+          prompt: context[:prompt],
+          diff_metadata: context[:diff_metadata],
+          model: model
+        )
+        select_message(candidates)
+      end
+
+      def group_diff(group)
+        group[:chunks].map { |chunk| chunk[:lines].join }.join
       end
     end
   end

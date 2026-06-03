@@ -45,4 +45,54 @@ RSpec.describe Commiti::FlowContextBuilder do
 
     expect(context[:prompt]).to eq({ system: 'system', user: 'user' })
   end
+
+  describe 'scope inference (private)' do
+    it 'matches common scopes from path segments' do
+      result = described_class.send(:infer_scope_for_files,
+        files: ['app/services/auth/token_service.rb'],
+        common_scopes: %w[auth api]
+      )
+      expect(result).to eq('auth')
+    end
+
+    it 'falls back to built-in mappings when no common scope matches' do
+      result = described_class.send(:infer_scope_for_files,
+        files: ['app/controllers/sessions_controller.rb'],
+        common_scopes: []
+      )
+      expect(result).to eq('api')
+    end
+
+    it 'returns nil when inferred scopes are mixed' do
+      result = described_class.send(:infer_scope_for_files,
+        files: ['app/controllers/users_controller.rb', 'app/models/user.rb'],
+        common_scopes: []
+      )
+      expect(result).to be_nil
+    end
+
+    it 'infers scope from lib namespace when available' do
+      result = described_class.send(:infer_scope_for_files,
+        files: ['lib/payments/processor.rb'],
+        common_scopes: []
+      )
+      expect(result).to eq('payments')
+    end
+
+    it 'applies FALLBACK_SCOPE_MAP to lib/* next segments' do
+      result = described_class.send(:infer_scope_for_files,
+        files: ['lib/controllers/users_controller.rb'],
+        common_scopes: []
+      )
+      expect(result).to eq('api')
+    end
+
+    it 'returns nil when no files are provided' do
+      result = described_class.send(:infer_scope_for_files,
+        files: [],
+        common_scopes: %w[auth]
+      )
+      expect(result).to be_nil
+    end
+  end
 end
