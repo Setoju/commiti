@@ -45,7 +45,8 @@ module Commiti
           generate_candidates: method(:generate_candidates),
           select_message: method(:select_message),
           finalize: method(:finalize),
-          maybe_copy_to_clipboard: method(:maybe_copy_to_clipboard)
+          maybe_copy_to_clipboard: method(:maybe_copy_to_clipboard),
+          style_profile: style_profile_for_flow
         ).run(diff: diff)
       rescue StandardError
         run_stage('Restaging uncommitted changes after failure') { Commiti::GitWriter.stage_all! }

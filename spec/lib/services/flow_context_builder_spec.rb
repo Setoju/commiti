@@ -29,7 +29,9 @@ RSpec.describe Commiti::FlowContextBuilder do
       summarized: false,
       raw_diff: diff,
       diff_metadata: { files: ['app/models/user.rb'] },
-      style_config: style_config
+      style_config: style_config,
+      style_profile: nil,
+      inferred_scope: nil
     ).and_return({ system: 'system', user: 'user' })
 
     context = described_class.build(

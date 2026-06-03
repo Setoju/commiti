@@ -22,6 +22,8 @@ RSpec.describe Commiti::ConfigLoader do
       expect(config[:temperature]).to eq(0.2)
       expect(config[:timeout_seconds]).to eq(180)
       expect(config[:open_timeout_seconds]).to eq(10)
+      expect(config[:style_learning]).to be(true)
+      expect(config[:style_lookback]).to eq(50)
     end
 
     it 'loads values from environment variables' do
@@ -149,6 +151,43 @@ RSpec.describe Commiti::ConfigLoader do
       end
     end
 
+    it 'reads style learning settings from a project config file' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, <<~YAML)
+          style_learning: false
+          style_lookback: 120
+        YAML
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:style_learning]).to be(false)
+        expect(config[:style_lookback]).to eq(120)
+      end
+    end
+
+    it 'clamps style_lookback to the max value' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, "style_lookback: 999\n")
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:style_lookback]).to eq(200)
+      end
+    end
+
+    it 'treats style_lookback: 0 as absent so the default of 50 applies' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, "style_lookback: 0\n")
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:style_lookback]).to eq(50)
+      end
+    end
+
     it 'env vars override YAML behavior flags' do
       Dir.mktmpdir do |dir|
         config_path = File.join(dir, '.commiti.yml')
@@ -259,6 +298,65 @@ RSpec.describe Commiti::ConfigLoader do
         )
 
         expect(config[:diff_summary_workers]).to eq(2)
+      end
+    end
+
+    it 'COMMITI_STYLE_LEARNING env var overrides YAML' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, "style_learning: true\n")
+
+        config = described_class.load(
+          env: { 'COMMITI_CONFIG' => config_path, 'COMMITI_STYLE_LEARNING' => 'false' },
+          cwd: dir
+        )
+
+        expect(config[:style_learning]).to be(false)
+      end
+    end
+
+    it 'loads a valid style snapshot from YAML' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, <<~YAML)
+          text_generation:
+            commit:
+              style_snapshot:
+                dominant_types: [feat, fix, chore]
+                scope_usage_rate: 0.85
+                common_scopes: [api, auth]
+                median_subject_length: 52
+                uses_body: false
+                subject_case: lowercase
+        YAML
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        snapshot = config[:style_snapshot]
+        expect(snapshot).to be_a(Commiti::StyleAnalyzer::StyleProfile)
+        expect(snapshot.dominant_types).to eq(%w[feat fix chore])
+        expect(snapshot.scope_usage_rate).to eq(0.85)
+        expect(snapshot.common_scopes).to eq(%w[api auth])
+        expect(snapshot.median_subject_length).to eq(52)
+        expect(snapshot.uses_body).to be(false)
+        expect(snapshot.subject_case).to eq('lowercase')
+      end
+    end
+
+    it 'ignores malformed style snapshots' do
+      Dir.mktmpdir do |dir|
+        config_path = File.join(dir, '.commiti.yml')
+        File.write(config_path, <<~YAML)
+          text_generation:
+            commit:
+              style_snapshot:
+                dominant_types: feat
+                scope_usage_rate: nope
+        YAML
+
+        config = described_class.load(env: { 'COMMITI_CONFIG' => config_path }, cwd: dir)
+
+        expect(config[:style_snapshot]).to be_nil
       end
     end
 

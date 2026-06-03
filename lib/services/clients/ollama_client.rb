@@ -18,7 +18,7 @@ module Commiti
       @base_url = ENV.fetch('OLLAMA_BASE_URL', DEFAULT_BASE_URL).strip
     end
 
-    def generate(system:, user:, model: nil, temperature: nil, timeout_seconds: nil, **opts)
+    def generate(system:, user:, model: nil, temperature: nil, timeout_seconds: nil, **_opts)
       resolved_model   = model || @config[:model] || DEFAULT_MODEL
       resolved_temp    = normalize_float(temperature || @config[:temperature], DEFAULT_TEMPERATURE)
       resolved_timeout = normalize_int(timeout_seconds || @config[:timeout_seconds], DEFAULT_TIMEOUT_SECONDS)
@@ -46,6 +46,5 @@ module Commiti
 
       content
     end
-
   end
 end

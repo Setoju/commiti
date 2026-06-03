@@ -2,7 +2,8 @@
 
 module Commiti
   class AutoSplitCoordinator
-    def initialize(options:, client:, model:, run_stage:, generate_candidates:, select_message:, finalize:, maybe_copy_to_clipboard:)
+    def initialize(options:, client:, model:, run_stage:, generate_candidates:, select_message:, finalize:, maybe_copy_to_clipboard:,
+                   style_profile: nil)
       @options = options
       @client = client
       @model = model
@@ -11,6 +12,7 @@ module Commiti
       @select_message = select_message
       @finalize = finalize
       @maybe_copy_to_clipboard = maybe_copy_to_clipboard
+      @style_profile = style_profile
     end
 
     def run(diff:)
@@ -22,7 +24,8 @@ module Commiti
 
     private
 
-    attr_reader :options, :client, :model, :run_stage, :generate_candidates, :select_message, :finalize, :maybe_copy_to_clipboard
+    attr_reader :options, :client, :model, :run_stage, :generate_candidates, :select_message, :finalize, :maybe_copy_to_clipboard,
+                :style_profile
 
     def single_group?(context)
       context[:change_groups].length <= 1
@@ -36,6 +39,7 @@ module Commiti
         run_stage: run_stage,
         model: model,
         text_generation_config: options[:text_generation],
+        style_profile: style_profile,
         worker_count: options[:diff_summary_workers]
       )
     end

@@ -6,10 +6,10 @@ module Commiti
   module Flows
     class DoctorFlow
       PROVIDER_KEY_MAP = {
-        'google'    => %w[GOOGLE_API_KEY GEMINI_API_KEY],
-        'openai'    => %w[OPENAI_API_KEY],
+        'google' => %w[GOOGLE_API_KEY GEMINI_API_KEY],
+        'openai' => %w[OPENAI_API_KEY],
         'anthropic' => %w[ANTHROPIC_API_KEY],
-        'ollama'    => []
+        'ollama' => []
       }.freeze
 
       def run
@@ -91,7 +91,7 @@ module Commiti
 
         return [:warn, 'no model set — will use provider default'] if model.nil? || model.strip.empty?
 
-        normalized = model.sub(/\Amodels\//, '')
+        normalized = model.sub(%r{\Amodels/}, '')
         valid = case provider
                 when 'google'    then normalized.start_with?('gemma-', 'gemini-')
                 when 'openai'    then normalized.match?(/\A(gpt-|o[134])/)

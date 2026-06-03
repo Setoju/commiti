@@ -29,11 +29,9 @@ RSpec.describe Commiti::Flows::DoctorFlow do
 
       it 'prints a line for each check' do
         expect do
-          begin
-            flow.run
-          rescue SystemExit
-            nil
-          end
+          flow.run
+        rescue SystemExit
+          nil
         end.to output(/git repo/i).to_stdout
       end
     end
@@ -83,7 +81,7 @@ RSpec.describe Commiti::Flows::DoctorFlow do
 
     it 'returns :fail when OPENAI_API_KEY is missing' do
       File.write(File.join(tmpdir, '.commiti.yml'), "provider: openai\n")
-      stub_const('ENV', ENV.to_h.reject { |k, _| k == 'OPENAI_API_KEY' })
+      stub_const('ENV', ENV.to_h.except('OPENAI_API_KEY'))
       level, msg = flow.send(:check_api_key)
       expect(level).to eq(:fail)
       expect(msg).to include('OPENAI_API_KEY')

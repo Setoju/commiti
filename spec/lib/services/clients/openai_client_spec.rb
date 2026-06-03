@@ -7,7 +7,7 @@ RSpec.describe Commiti::OpenAIClient do
   let(:success_body) { { choices: [{ message: { content: 'feat: add user auth' } }] }.to_json }
   let(:ok_response) do
     instance_double(HTTParty::Response, success?: true, body: success_body,
-                    parsed_response: JSON.parse(success_body))
+                                        parsed_response: JSON.parse(success_body))
   end
 
   describe '#generate' do
@@ -20,9 +20,9 @@ RSpec.describe Commiti::OpenAIClient do
       allow(described_class).to receive(:post) do |_path, opts|
         body = JSON.parse(opts[:body])
         expect(body['messages']).to eq([
-          { 'role' => 'system', 'content' => 'my system' },
-          { 'role' => 'user', 'content' => 'my user' }
-        ])
+                                         { 'role' => 'system', 'content' => 'my system' },
+                                         { 'role' => 'user', 'content' => 'my user' }
+                                       ])
         ok_response
       end
       client.generate(system: 'my system', user: 'my user', model: 'gpt-4o')
@@ -40,7 +40,7 @@ RSpec.describe Commiti::OpenAIClient do
     it 'raises on non-2xx with error detail' do
       error_body = { error: { message: 'invalid api key' } }.to_json
       bad = instance_double(HTTParty::Response, success?: false, code: 401, body: error_body,
-                            parsed_response: JSON.parse(error_body))
+                                                parsed_response: JSON.parse(error_body))
       allow(described_class).to receive(:post).and_return(bad)
       expect { client.generate(system: 's', user: 'u', model: 'm') }.to raise_error(/invalid api key/)
     end
@@ -48,7 +48,7 @@ RSpec.describe Commiti::OpenAIClient do
     it 'raises when response content is empty' do
       empty_body = { choices: [{ message: { content: '' } }] }.to_json
       empty = instance_double(HTTParty::Response, success?: true, body: empty_body,
-                              parsed_response: JSON.parse(empty_body))
+                                                  parsed_response: JSON.parse(empty_body))
       allow(described_class).to receive(:post).and_return(empty)
       expect { client.generate(system: 's', user: 'u', model: 'm') }
         .to raise_error(/OpenAI error: response did not include generated text/)

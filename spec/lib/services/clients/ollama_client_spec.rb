@@ -7,7 +7,7 @@ RSpec.describe Commiti::OllamaClient do
   let(:success_body) { { message: { content: 'feat: cache results' } }.to_json }
   let(:ok_response) do
     instance_double(HTTParty::Response, success?: true, body: success_body,
-                    parsed_response: JSON.parse(success_body))
+                                        parsed_response: JSON.parse(success_body))
   end
 
   before { stub_const('ENV', ENV.to_h.merge('OLLAMA_BASE_URL' => 'http://localhost:11434')) }
@@ -36,7 +36,7 @@ RSpec.describe Commiti::OllamaClient do
 
     it 'raises on non-2xx' do
       bad = instance_double(HTTParty::Response, success?: false, code: 500,
-                            body: 'internal error', parsed_response: 'internal error')
+                                                body: 'internal error', parsed_response: 'internal error')
       allow(described_class).to receive(:post).and_return(bad)
       expect { client.generate(system: 's', user: 'u', model: 'm') }.to raise_error(/Ollama error: 500/)
     end

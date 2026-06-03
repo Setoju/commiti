@@ -35,15 +35,40 @@ module Commiti
       out
     end
 
+    LOG_RECORD_SEPARATOR = "\x1e"
+    LOG_FIELD_SEPARATOR = "\x1f"
+
+    def self.recent_commit_messages(n: 50)
+      format = ['%s', '%b'].join(LOG_FIELD_SEPARATOR) + LOG_RECORD_SEPARATOR
+      output, err, status = Open3.capture3(
+        'git',
+        'log',
+        '--no-color',
+        '--no-merges',
+        "--pretty=format:#{format}",
+        '-n',
+        n.to_i.to_s
+      )
+      raise "Failed to read recent git commits: #{err.strip.empty? ? output.strip : err.strip}" unless status.success?
+      return [] if output.to_s.strip.empty?
+
+      output.split(LOG_RECORD_SEPARATOR).filter_map do |record|
+        next if record.strip.empty?
+
+        subject, body = record.split(LOG_FIELD_SEPARATOR, 2)
+        {
+          subject: subject.to_s.strip,
+          body: body.to_s
+        }
+      end
+    end
+
     def self.remote_url(remote: 'origin')
       output, status = Open3.capture2('git', 'remote', 'get-url', remote)
       status.success? ? output.strip : nil
     rescue StandardError
       nil
     end
-
-    LOG_RECORD_SEPARATOR = "\x1e"
-    LOG_FIELD_SEPARATOR = "\x1f"
 
     def self.commits_in_range(range:)
       raise 'Invalid changelog range.' unless valid_range?(range)

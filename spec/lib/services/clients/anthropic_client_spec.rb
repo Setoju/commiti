@@ -7,7 +7,7 @@ RSpec.describe Commiti::AnthropicClient do
   let(:success_body) { { content: [{ text: 'feat: improve error messages' }] }.to_json }
   let(:ok_response) do
     instance_double(HTTParty::Response, success?: true, body: success_body,
-                    parsed_response: JSON.parse(success_body))
+                                        parsed_response: JSON.parse(success_body))
   end
 
   describe '#generate' do
@@ -38,7 +38,7 @@ RSpec.describe Commiti::AnthropicClient do
     it 'raises on non-2xx with error detail' do
       error_body = { error: { message: 'permission denied' } }.to_json
       bad = instance_double(HTTParty::Response, success?: false, code: 403, body: error_body,
-                            parsed_response: JSON.parse(error_body))
+                                                parsed_response: JSON.parse(error_body))
       allow(described_class).to receive(:post).and_return(bad)
       expect { client.generate(system: 's', user: 'u', model: 'm') }.to raise_error(/permission denied/)
     end

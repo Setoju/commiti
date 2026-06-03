@@ -65,9 +65,16 @@ module Commiti
       ---
     PROMPT
 
-    def self.build(type:, diff:, summarized: false, raw_diff: nil, diff_metadata: nil, style_config: nil)
+    def self.build(type:, diff:, summarized: false, raw_diff: nil, diff_metadata: nil, style_config: nil,
+                   style_profile: nil, inferred_scope: nil)
       style_config = Commiti::TextGenerationStyle::DEFAULT_CONFIG if style_config.nil?
-      system_prompt = type == :pr ? pr_system_prompt(style_config) : commit_system_prompt(style_config)
+      system_prompt = if type == :pr
+                        pr_system_prompt(style_config)
+                      else
+                        commit_system_prompt(style_config,
+                                             style_profile: style_profile,
+                                             inferred_scope: inferred_scope)
+                      end
       scope_overview = build_scope_overview(raw_diff || diff, diff_metadata: diff_metadata)
 
       diff_section = if summarized
@@ -126,13 +133,17 @@ module Commiti
       { system: system_prompt, user: user_content }
     end
 
-    def self.commit_system_prompt(style_config)
-      <<~PROMPT
+    def self.commit_system_prompt(style_config, style_profile: nil, inferred_scope: nil)
+      prompt = <<~PROMPT
         #{COMMIT_SYSTEM.rstrip}
 
         Style guidance:
         - #{Commiti::TextGenerationStyle.commit_subject_case_instruction(style_config)}
       PROMPT
+
+      return prompt unless style_profile
+
+      "#{prompt.rstrip}\n\n#{style_context_block(style_profile, inferred_scope, style_config)}\n"
     end
     private_class_method :commit_system_prompt
 
@@ -159,5 +170,47 @@ module Commiti
       remainder = files.length > 10 ? "\n- ...and #{files.length - 10} more file(s)" : ''
       "- Total files changed: #{files.length}\n- Changed files:\n#{sample}#{remainder}"
     end
+
+    def self.style_context_block(style_profile, inferred_scope, style_config)
+      dominant_types = style_profile.dominant_types
+      dominant_types = ['none'] if dominant_types.nil? || dominant_types.empty?
+      common_scopes = style_profile.common_scopes
+      common_scopes = ['none'] if common_scopes.nil? || common_scopes.empty?
+
+      scope_usage = (style_profile.scope_usage_rate.to_f * 100).round
+      subject_case = resolve_subject_case(style_profile, style_config)
+      subject_case_label = case subject_case
+                           when 'lowercase'
+                             'lowercase after prefix'
+                           when 'uppercase'
+                             'uppercase after prefix'
+                           else
+                             'mixed (no consistent casing)'
+                           end
+      body_usage = style_profile.uses_body ? 'yes (most commits include a body)' : 'no (most commits are single-line)'
+
+      lines = [
+        "Style context from this repository's commit history:",
+        "- Dominant types used: #{dominant_types.join(', ')}",
+        "- Scope usage: #{scope_usage}% of commits use a scope",
+        "- Most common scopes: #{common_scopes.join(', ')}",
+        "- Typical subject length: ~#{style_profile.median_subject_length} characters",
+        "- Body usage: #{body_usage}",
+        "- Subject case: #{subject_case_label}"
+      ]
+      lines << "- Suggested scope for this diff: #{inferred_scope}" if inferred_scope
+      lines << ''
+      lines << 'Match this style unless the diff clearly calls for a different type or scope.'
+      lines.join("\n")
+    end
+    private_class_method :style_context_block
+
+    def self.resolve_subject_case(style_profile, style_config)
+      configured = Commiti::TextGenerationStyle.commit_subject_case(style_config)
+      return configured if %w[lowercase uppercase].include?(configured)
+
+      style_profile.subject_case || 'mixed'
+    end
+    private_class_method :resolve_subject_case
   end
 end

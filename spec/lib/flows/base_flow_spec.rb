@@ -26,6 +26,28 @@ RSpec.describe Commiti::Flows::BaseFlow do
     allow(Commiti::Spinner).to receive(:run) { |_message, &block| block.call }
   end
 
+  describe '#style_profile_for_flow' do
+    it 'returns style_snapshot even when style_learning is false' do
+      snapshot = Commiti::StyleAnalyzer::StyleProfile.new(
+        dominant_types: %w[feat fix],
+        scope_usage_rate: 0.8,
+        common_scopes: %w[api],
+        median_subject_length: 50,
+        uses_body: false,
+        subject_case: 'lowercase'
+      )
+      flow_with_snapshot = flow_class.new(options: {
+                                            candidates: 1,
+                                            no_copy: true,
+                                            base_branch: 'main',
+                                            style_learning: false,
+                                            style_snapshot: snapshot
+                                          })
+
+      expect(flow_with_snapshot.send(:style_profile_for_flow)).to eq(snapshot)
+    end
+  end
+
   describe '#generate_with_quality_check' do
     it 'raises when retry output is still invalid' do
       long_subject = "feat: #{'a' * 110}"
