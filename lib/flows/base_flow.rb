@@ -8,6 +8,7 @@ module Commiti
         diff = collect_diff
         client = Commiti::ClientFactory.build(config: options)
         selected_model = options[:model]
+        style_profile = style_profile_for_flow
         context = Commiti::FlowContextBuilder.build(
           flow_type: flow_type,
           diff: diff,
@@ -15,6 +16,7 @@ module Commiti
           run_stage: method(:run_stage),
           model: selected_model,
           text_generation_config: options[:text_generation],
+          style_profile: style_profile,
           worker_count: options[:diff_summary_workers]
         )
         Commiti::MessagePresenter.print_summarization_notice(context[:summarized_result])
@@ -87,6 +89,14 @@ module Commiti
           run_stage: method(:run_stage),
           text_generation_config: options[:text_generation]
         )
+      end
+
+      def style_profile_for_flow
+        return nil unless flow_type == :commit
+        return options[:style_snapshot] if options[:style_snapshot]
+        return nil if options[:style_learning] == false
+
+        Commiti::StyleAnalyzer.analyze(lookback: options[:style_lookback])
       end
     end
   end
