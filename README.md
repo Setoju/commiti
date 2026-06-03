@@ -59,6 +59,7 @@ GOOGLE_API_KEY=your_google_ai_key
 # COMMITI_BASE_BRANCH=main
 # COMMITI_NO_COPY=false
 # COMMITI_AUTO_SPLIT=false
+# COMMITI_STYLE_LEARNING=true
 
 # Optional per-project prompt styling (safe YAML, no code execution):
 # COMMITI_CONFIG=.commiti.yml
@@ -79,6 +80,8 @@ candidates: 1                  # number of message candidates to generate (1–5
 auto_split: false              # auto-group staged changes into multiple commits
 no_copy: false                 # skip copying output to clipboard
 diff_summary_workers: 4        # parallel workers for large-diff summarization
+style_learning: true           # infer commit style from repo history
+style_lookback: 50             # commits to analyze (max: 200)
 
 git:
   base_branch: main            # base branch for PR diffs
@@ -86,6 +89,14 @@ git:
 text_generation:
   commit:
     subject_case: uppercase    # uppercase, lowercase, or preserve
+    # Optional: frozen style snapshot to share team conventions
+    style_snapshot:
+      dominant_types: [feat, fix, chore]
+      scope_usage_rate: 0.85
+      common_scopes: [api, auth, ui]
+      median_subject_length: 52
+      uses_body: false
+      subject_case: lowercase
   pr:
     sections:
       - name: Overview
