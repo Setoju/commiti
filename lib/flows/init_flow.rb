@@ -98,7 +98,10 @@ module Commiti
           if content.match?(/^#{Regexp.escape(env_var)}=/)
             File.write(env_path, content.gsub(/^#{Regexp.escape(env_var)}=.*$/, line))
           else
-            File.open(env_path, 'a') { |f| f.puts(line) }
+            File.open(env_path, 'a') do |f|
+              f.write("\n") unless content.end_with?("\n")
+              f.puts(line)
+            end
           end
         else
           File.write(env_path, "#{line}\n")

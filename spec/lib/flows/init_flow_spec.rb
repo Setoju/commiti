@@ -43,6 +43,14 @@ RSpec.describe Commiti::Flows::InitFlow do
       expect(File.read(File.join(tmpdir, '.env'))).to include('OPENAI_API_KEY=sk-test')
     end
 
+    it 'appends on its own line when .env already has content without trailing newline' do
+      File.write(File.join(tmpdir, '.env'), 'OTHER_KEY=value')
+      flow.run
+      lines = File.readlines(File.join(tmpdir, '.env')).map(&:chomp)
+      expect(lines).to include('OTHER_KEY=value')
+      expect(lines).to include('OPENAI_API_KEY=sk-test')
+    end
+
     it 'adds .env to .gitignore' do
       flow.run
       expect(File.read(File.join(tmpdir, '.gitignore'))).to include('.env')
