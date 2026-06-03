@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'yaml'
+require_relative '../style_analyzer'
 require_relative '../text_generation_style'
 
 module Commiti
@@ -19,6 +20,9 @@ module Commiti
       no_copy: false,
       auto_split: false,
       diff_summary_workers: 4,
+      style_learning: true,
+      style_lookback: 50,
+      style_snapshot: nil,
       temperature: Commiti::GoogleClient::DEFAULT_TEMPERATURE,
       timeout_seconds: Commiti::GoogleClient::DEFAULT_TIMEOUT_SECONDS,
       open_timeout_seconds: Commiti::GoogleClient::DEFAULT_OPEN_TIMEOUT_SECONDS,
@@ -39,6 +43,7 @@ module Commiti
           github_token: present_or_nil(env.fetch('COMMITI_GITHUB_TOKEN', nil)),
           gitlab_token: present_or_nil(env.fetch('COMMITI_GITLAB_TOKEN', nil)),
           gitbucket_token: present_or_nil(env.fetch('COMMITI_GITBUCKET_TOKEN', nil)),
+          style_snapshot: style_snapshot_from_yaml(merged_raw),
           text_generation: Commiti::TextGenerationStyle.normalize(merged_raw)
         )
         .merge(env_behavior_overrides(env))
@@ -104,7 +109,9 @@ module Commiti
         base_branch: present_or_nil(lookup_key(git, 'base_branch').to_s),
         no_copy: as_boolean(lookup_key(merged, 'no_copy')),
         auto_split: as_boolean(lookup_key(merged, 'auto_split')),
-        diff_summary_workers: safe_integer(lookup_key(merged, 'diff_summary_workers'))
+        diff_summary_workers: safe_integer(lookup_key(merged, 'diff_summary_workers')),
+        style_learning: as_boolean(lookup_key(merged, 'style_learning')),
+        style_lookback: normalize_style_lookback(lookup_key(merged, 'style_lookback'))
       }.compact
     end
     private_class_method :yaml_behavior_config
@@ -120,10 +127,19 @@ module Commiti
         temperature: safe_float(env.fetch('COMMITI_MODEL_TEMPERATURE', nil)),
         timeout_seconds: safe_integer(env.fetch('COMMITI_MODEL_TIMEOUT_SECONDS', nil)),
         open_timeout_seconds: safe_integer(env.fetch('COMMITI_MODEL_OPEN_TIMEOUT_SECONDS', nil)),
-        diff_summary_workers: safe_integer(env.fetch('COMMITI_DIFF_SUMMARY_WORKERS', nil))
+        diff_summary_workers: safe_integer(env.fetch('COMMITI_DIFF_SUMMARY_WORKERS', nil)),
+        style_learning: safe_boolean_from_string(env.fetch('COMMITI_STYLE_LEARNING', nil))
       }.compact
     end
     private_class_method :env_behavior_overrides
+
+    def self.style_snapshot_from_yaml(merged)
+      text_generation = lookup_key(merged, 'text_generation') || lookup_key(merged, 'generation') || {}
+      commit_block = lookup_key(text_generation, 'commit') || {}
+      snapshot = lookup_key(commit_block, 'style_snapshot')
+      Commiti::StyleAnalyzer.profile_from_snapshot(snapshot)
+    end
+    private_class_method :style_snapshot_from_yaml
 
     def self.lookup_key(hash, key)
       return nil unless hash.is_a?(Hash)
@@ -167,5 +183,13 @@ module Commiti
       nil
     end
     private_class_method :safe_boolean_from_string
+
+    def self.normalize_style_lookback(value)
+      parsed = safe_integer(value)
+      return nil if parsed.nil? || parsed <= 0
+
+      [parsed, 200].min
+    end
+    private_class_method :normalize_style_lookback
   end
 end
